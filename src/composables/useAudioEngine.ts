@@ -118,7 +118,8 @@ export function useAudioEngine() {
   function createBufferFromFloat32(data: Float32Array): AudioBuffer {
     const ctx = ensureContext()
     const buffer = ctx.createBuffer(1, data.length, PO33_SAMPLE_RATE)
-    buffer.copyToChannel(data, 0)
+    const channelData = new Float32Array(data)
+    buffer.copyToChannel(channelData, 0)
     return buffer
   }
 

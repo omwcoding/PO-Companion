@@ -116,7 +116,7 @@ export async function decodeAudioFile(
     if (originalChannels > 1) {
       const monoData = mixToMono(decoded)
       finalBuffer = audioCtx.createBuffer(1, monoData.length, PO33_SAMPLE_RATE)
-      finalBuffer.copyToChannel(monoData, 0)
+      finalBuffer.copyToChannel(new Float32Array(monoData), 0)
     } else {
       finalBuffer = decoded
     }
@@ -145,8 +145,9 @@ export async function normalizeBuffer(
   // Mix to mono se multi-canale
   if (result.numberOfChannels > 1) {
     const monoData = mixToMono(result)
-    const monoBuffer = audioCtx.createBuffer(1, monoData.length, result.sampleRate)
-    monoBuffer.copyToChannel(monoData, 0)
+    const monoFloat = monoData instanceof Float32Array ? monoData : new Float32Array(monoData as any)
+    const monoBuffer = audioCtx.createBuffer(1, monoFloat.length, result.sampleRate)
+    monoBuffer.copyToChannel(monoFloat, 0)
     result = monoBuffer
   }
 
