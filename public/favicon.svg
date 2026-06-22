@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- Background -->
+  <rect width="64" height="64" rx="14" fill="#1A1A24"/>
+  <!-- Grid dots (PO-33 style) -->
+  <rect x="10" y="10" width="18" height="18" rx="4" fill="#FF6B2B"/>
+  <rect x="36" y="10" width="18" height="18" rx="4" fill="#FF6B2B" opacity="0.5"/>
+  <rect x="10" y="36" width="18" height="18" rx="4" fill="#FF6B2B" opacity="0.5"/>
+  <rect x="36" y="36" width="18" height="18" rx="4" fill="#FFD93D"/>
+</svg>
