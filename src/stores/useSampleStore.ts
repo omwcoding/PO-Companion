@@ -5,7 +5,6 @@ import {
   createEmptySlot,
   DEFAULT_SETTINGS,
   PO33_MEMORY_SECONDS,
-  PO33_SAMPLE_RATE,
   PO33_MAX_PADS,
 } from '@/types'
 
@@ -50,7 +49,6 @@ export const useSampleStore = defineStore('sample', () => {
 
   /** Durata totale stimata del flusso (senza normalizzazione) */
   const estimatedDurationSeconds = computed(() => {
-    const sr = PO33_SAMPLE_RATE
     const assigned = assignedSlots.value
 
     if (assigned.length === 0) return 0

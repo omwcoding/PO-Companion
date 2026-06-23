@@ -67,7 +67,7 @@ export function normalizePerPad(
  */
 export function normalize(
   data: Float32Array,
-  mode: 'global' | 'per-pad',
+  _mode: 'global' | 'per-pad',
   targetPeak: number = 0.97,
 ): NormalizationResult {
   // In entrambi i casi, dopo la concatenazione normalizziamo il flusso finale.

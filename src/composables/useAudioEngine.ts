@@ -141,6 +141,76 @@ export function useAudioEngine() {
     }
   }
 
+  /**
+   * Riproduce un intervallo specifico di un AudioBuffer, applicando volume e reverse.
+   */
+  function previewSlice(
+    buffer: AudioBuffer,
+    startMarker: number,
+    endMarker: number,
+    volume: number = 1.0,
+    reversed: boolean = false
+  ): Promise<void> {
+    const ctx = ensureContext()
+    stop()
+
+    const durationSeconds = endMarker - startMarker
+    if (durationSeconds <= 0) return Promise.resolve()
+
+    const sampleRate = buffer.sampleRate
+    const startSample = Math.round(startMarker * sampleRate)
+    const endSample = Math.round(endMarker * sampleRate)
+    const length = Math.max(1, endSample - startSample)
+
+    const sliceBuffer = ctx.createBuffer(1, length, sampleRate)
+    const channelData = new Float32Array(length)
+
+    // Estrae i campioni del canale 0 per l'anteprima
+    const origData = buffer.getChannelData(0)
+    for (let i = 0; i < length; i++) {
+      const idx = startSample + i
+      channelData[i] = idx < origData.length ? origData[idx] * volume : 0
+    }
+
+    if (reversed) {
+      channelData.reverse()
+    }
+
+    sliceBuffer.copyToChannel(channelData, 0)
+
+    return new Promise((resolve) => {
+      duration.value = sliceBuffer.duration
+      const source = ctx.createBufferSource()
+      source.buffer = sliceBuffer
+      source.connect(ctx.destination)
+      source.start(0)
+
+      source.onended = () => {
+        if (isPlaying.value) {
+          isPlaying.value = false
+          currentTime.value = sliceBuffer.duration
+          cancelAnimationFrame(_animFrame)
+        }
+        resolve()
+      }
+
+      _currentSource = source
+      _startTime = ctx.currentTime
+      _startOffset = 0
+      isPlaying.value = true
+
+      function tick() {
+        if (!_ctx || !isPlaying.value) return
+        currentTime.value = Math.min(
+          _ctx.currentTime - _startTime,
+          sliceBuffer.duration
+        )
+        _animFrame = requestAnimationFrame(tick)
+      }
+      tick()
+    })
+  }
+
   return {
     // State (readonly per i consumatori)
     isPlaying: readonly(isPlaying),
@@ -161,5 +231,6 @@ export function useAudioEngine() {
     seek,
     playFloat32,
     createBufferFromFloat32,
+    previewSlice,
   }
 }
