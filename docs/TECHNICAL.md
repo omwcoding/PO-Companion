@@ -52,14 +52,16 @@ L'utente carica un file audio, lo taglia visualmente in segmenti (max 16 pad), e
 
 | Parametro | Valore |
 |---|---|
-| Memoria totale campioni | **~40 secondi** |
-| Slot Drum | 16 (griglia 4x4) |
-| Slot Melodic | 16 (griglia 4x4, con pitch tracking) |
-| Sample Rate in registrazione | **44.1 kHz** |
-| Bit Depth | **16-bit** |
+| Memoria totale campioni | **~40 secondi** (pool unico condiviso da tutti gli slot) |
+| Slot Drum | 16 (griglia 4x4, bank A) |
+| Slot Melodic | 16 (griglia 4x4, con pitch tracking, bank B) |
+| Sample Rate **interno** del PO-33 | **~23.437 Hz** *(non 44.1kHz — vedi §2.6)* |
+| Bit Depth interno | **8-bit µ-law** *(companding — vedi §2.6)* |
+| Sample Rate **output** app → line-in | **44.1 kHz** (la ADC del PO-33 converte internamente) |
 | Canali | **Mono** (l'input stereo viene mixato internamente) |
 | Ingresso audio | Jack 3.5mm TRS (Line-In) |
-| Metodo di taglio | Auto-chop su transienti |
+| Metodo di taglio Drum | Auto-chop su transienti (inaffidabile) **oppure** 16 parti uguali via melodic copy trick |
+| Il trim salva memoria? | **No** — il PO-33 conserva l'intera registrazione originale |
 | Formato sync | SY-sync su canale Left *(frequenza esatta da verificare — vedi §2.4)* |
 
 ### 2.2 Il Trucco del Silenzio (Silence Gap)
@@ -184,15 +186,70 @@ Questo consente al PO-33 di:
 
 Il PO-33 ha due tipi di slot con comportamenti distinti in fase di registrazione:
 
-| Caratteristica | Drum slot (1-16, bank A) | Melodic slot (1-16, bank B) |
+| Caratteristica | Drum slot (bank A) | Melodic slot (bank B) |
 |---|---|---|
-| Auto-chop | **Sì** — rileva transienti | **No** — registra come campione singolo |
-| Pitch tracking | No | **Sì** — rileva nota fondamentale |
+| Auto-chop | **Sì** — rileva transienti (inaffidabile) | **No** — registra come campione singolo |
+| Pitch tracking | No | **Sì** — tutti i 16 tasti = stesso campione a pitch diversi |
 | Use case tipico | Kit drum, one-shot percussivi | Loop melodici, synth, voci |
-| Flusso PO-Companion | **Concatenazione multi-pad** | Campione singolo (nessun gap) |
+| Flusso PO-Companion | **Concatenazione multi-pad con gap** | Campione singolo (nessun gap) |
+| Limite per slot | Fino a 40s (se memoria disponibile) | Idem |
 
 > [!IMPORTANT]
 > Il flusso con gap di silenzio funziona **solo in modalità Drum**. In modalità Melodic il PO-33 registra l'intero flusso come un unico campione senza tagli automatici. L'UI deve rendere chiara questa distinzione con un selettore di modalità visibile.
+
+#### Il Melodic Copy Trick (metodo alternativo al nostro)
+
+Esiste un metodo alternativo usato dalla community per ottenere **16 slice uguali** senza usare la transient detection:
+
+1. Registra il sample in uno slot **Melodic**
+2. Trimma il sample alla lunghezza esatta desiderata
+3. Esegui: `tieni WRITE + SOUND → seleziona slot Melodic sorgente → seleziona slot Drum destinazione`
+4. Il PO-33 divide il sample in **esattamente 16 parti uguali** (durata_totale / 16)
+
+> [!NOTE]
+> Il nostro approccio (gap di silenzio) è **superiore** al melodic copy trick perché:
+> - Permette segmenti di **durata diversa** (non per forza uguali)
+> - Permette di **selezionare hit specifici** da punti diversi di una canzone lunga
+> - Non richiede passaggi manuali sul PO-33 oltre alla semplice registrazione
+
+### 2.6 Formato Audio Interno del PO-33
+
+> [!IMPORTANT]
+> Questa è una delle scoperte più rilevanti della ricerca: il PO-33 **non registra a 44.1kHz 16-bit** come documenti TE potrebbero suggerire.
+
+Il formato audio interno del PO-33 (confermato dalla community su sp-forums.com e elektronauts):
+
+| Parametro | Valore |
+|---|---|
+| Sample rate interno | **~23.437 Hz** (non standard) |
+| Bit depth interno | **8-bit con µ-law companding** |
+| Qualità percepita | ~10-12 bit (grazie alla compressione µ-law) |
+| Origine del suono lo-fi | Questo formato, simile a SP-1200/MPC60 vintage |
+
+**Implicazioni per PO-Companion:**
+
+- Il nostro **output rimane a 44.1kHz PCM** — inviamo il miglior segnale possibile all'ADC del PO-33 via line-in, che poi converte internamente a 23kHz µ-law.
+- Non dobbiamo preoccuparci del formato interno: è la ADC analogica del PO-33 a fare la conversione.
+- **Feature futura (Fase 3.5)**: modalità "PO-33 Sound Preview" che simula il downsample a 23kHz + encoding µ-law nell'anteprima in-app, così l'utente sente *esattamente* come suonerà il campione sul device.
+
+### 2.7 Competitor Analysis — Overloader33
+
+L'unico tool esistente con funzionalità simili è **Overloader33** (overloader33.com), una webapp browser-based creata dalla community:
+
+| Funzione | Overloader33 | PO-Companion |
+|---|---|---|
+| Playback via line-in | ✅ | ✅ |
+| Gap tra sample | ✅ (basico) | ✅ (configurabile, anti-click, pre-roll) |
+| Waveform visuale interattiva | ❌ | ✅ |
+| Chopping visuale con marker | ❌ | ✅ |
+| Transient detection | ❌ | ✅ |
+| Preview per-pad | ❌ | ✅ |
+| Navigazione su file lunghi | ❌ | ✅ (overview + detail) |
+| Normalizzazione automatica | ❌ | ✅ |
+| Anti-click (fade + zero-crossing) | ❌ | ✅ |
+| PO-33 sound preview (µ-law) | ❌ | 🔜 Fase 3.5 |
+| Salvataggio progetto offline | ❌ | ✅ Fase 4 |
+| PWA installabile | ❌ | ✅ Fase 4 |
 
 ---
 
@@ -689,13 +746,16 @@ po-companion/
 ├─────────────────────────────┤
 │  [ DRUM ▼ ]  🎯 Auto  ⊞ Grid│  ← Mode selector + Chop tools
 ├─────────────────────────────┤
+│  ▁▂▃▅██▅▃▂▁▂▄▆██▆▄▂▁▃▅███  │  ← Overview waveform (file intero)
+│            [═══]            │    Trascina la finestra per navigare
+├─────────────────────────────┤
 │                             │
 │  ┌─────────────────────┐    │
-│  │ ▁▃▅▇█▇▅▃▁▃▅▇█▇▅▃▁  │    │  ← Waveform Canvas (OffscreenCanvas)
-│  │  ▏S1▕▏S2▕ ▏S3▕     │    │    Scrollabile, zoomabile
-│  │  ◆    ◆   ◆         │    │    ◆ = marker transienti
+│  │ ▁▃▅▇█▇▅▃▁▃▅▇█▇▅▃▁  │    │  ← Detail waveform (zoom sulla regione)
+│  │  ▏S1▕▏S2▕ ▏S3▕     │    │    Scrollabile, pinch-to-zoom
+│  │  ◆    ◆   ◆         │    │    ◆ = marker transienti rilevati
 │  └─────────────────────┘    │
-│  ──█████░░░░ 23.4s / 40.0s ─│  ← Budget Bar (con colori per-pad)
+│  ──█████░░░░ 23.4s / 40.0s ─│  ← Budget Bar (colori per-pad)
 ├─────────────────────────────┤
 │  ┌──┐ ┌──┐ ┌──┐ ┌──┐      │
 │  │1 │ │2 │ │3 │ │4 │      │
@@ -714,17 +774,67 @@ po-companion/
 └─────────────────────────────┘
 ```
 
+### 7.3.1 Waveform a Due Livelli (Overview + Detail)
+
+Per gestire correttamente file audio lunghi (canzoni intere, loop estesi), la waveform è strutturata su **due livelli distinti**:
+
+#### Overview (strip non interattiva)
+- Mostra l'**intera durata del file sorgente** in una strip compatta (~40px di altezza)
+- Una **finestra traslucida** indica la regione attualmente visibile nel Detail
+- **Drag sulla finestra** → sposta la regione di navigazione
+- **Tap su un punto** dell'overview → centra il detail su quel punto
+- I pad già assegnati appaiono come piccoli blocchi colorati nell'overview (anche se fuori dalla regione visibile nel detail)
+
+#### Detail (canvas interattivo principale)
+- Mostra solo la **porzione selezionata** dall'overview, con zoom adeguato
+- Qui avvengono tutte le interazioni: posizionamento marker, drag, pinch-to-zoom, tap
+- Il livello di zoom del detail **non cambia la finestra dell'overview** — sono indipendenti
+- **Double tap** → zoom-to-fit sulla regione dell'overview selezionata
+
+```
+File: canzone.mp3 (4:32)
+
+OVERVIEW:
+├────────────────[══════]─────────────────────────────┤
+│0:00                1:20  1:35                    4:32│
+│          ■ P1     ■P3         ■ P5                   │  ← pad assegnati visibili
+
+DETAIL (zoom sulla regione 1:20 → 1:35):
+├─────────────────────────────────────────────────────┤
+│  ▁▃▅▇████▇▅▃▁  ▁▂▄▆██▆▄▂▁  ▁▃▅▇████▇▅▃▁           │
+│        ├── Pad 3 ──┤   ├── Pad 4 ──┤                │
+└─────────────────────────────────────────────────────┘
+```
+
+**Workflow per file lunghi:**
+1. Carica la canzone → l'overview mostra tutto il file
+2. Trascina la finestra sull'overview verso il punto di interesse (es. minuto 1:23 dove c'è il kick)
+3. Il detail mostra quella zona → posiziona i marker del pad
+4. Sposta la finestra su un altro punto → assegna altri pad
+5. I pad già assegnati rimangono visibili come blocchi nell'overview
+
 ### 7.4 Interazioni Touch sulla Waveform
+
+#### Detail (canvas principale)
 
 | Gesto | Azione |
 |---|---|
 | **Tap** | Posiziona cursore di riproduzione |
-| **Drag orizzontale** | Scorrimento panoramico della waveform |
-| **Pinch (2 dita)** | Zoom in/out |
+| **Drag orizzontale** | Scorrimento panoramico all'interno della regione selezionata |
+| **Pinch (2 dita)** | Zoom in/out nella regione del detail |
 | **Drag su marker** | Sposta il marker di inizio/fine del pad selezionato |
-| **Double tap** | Zoom-to-fit (mostra intera waveform) |
+| **Double tap** | Zoom-to-fit sulla regione dell'overview selezionata |
 | **Long press** | Menu contestuale (split, auto-trim, chop-to-grid, reset) |
 | **Tap su marker transiente** | Snap del marker del pad selezionato a quel transiente |
+| **Tap su regione colorata** | Seleziona il pad corrispondente |
+
+#### Overview (strip navigazione)
+
+| Gesto | Azione |
+|---|---|
+| **Drag sulla finestra** | Sposta la regione visibile nel detail |
+| **Tap su punto vuoto** | Centra il detail su quel punto |
+| **Pinch** | Ridimensiona la finestra (cambia zoom del detail) |
 
 ### 7.5 Interazioni sulla Griglia Pad
 
@@ -767,27 +877,29 @@ La barra del budget (40 secondi totali) mostra i blocchi colorati di ogni pad ne
 ---
 
 ### Fase 2 — Interfaccia Grafica Mobile-First
-> **Obiettivo**: UI completa con waveform interattiva (OffscreenCanvas), griglia pad 4x4, strumenti di chopping, e controlli di trasporto.
+> **Obiettivo**: UI completa con waveform a due livelli (overview + detail), griglia pad 4x4, strumenti di chopping, e controlli di trasporto. Gestione corretta di file audio lunghi.
 
 | Step | Descrizione | Criteri di completamento |
 |---|---|---|
-| 2.1 | Layout principale responsive (Header, Mode Selector, Waveform, Grid, Transport) | Layout stabile su Chrome mobile 5-6" |
-| 2.2 | Web Worker `waveformWorker.ts` + `OffscreenCanvas`: rendering forma d'onda con downsampling | Waveform visibile e fluida ≥60fps |
-| 2.3 | Marker di taglio draggabili (touch-friendly, hit area ≥ 44px) | Drag preciso su touch |
-| 2.4 | Regioni colorate per pad assegnati (overlay sulla waveform) | Ogni pad ha colore unico |
-| 2.5 | Pinch-to-zoom e pan sulla waveform | Gestione multi-touch |
-| 2.6 | Componenti `PadGrid` + `PadCell`: griglia 4x4 interattiva | Tap, long-press, stati visuali, indicatore reverse/volume |
-| 2.7 | `TransportBar`: Play/Stop/Seek con feedback visuale | Cursore di riproduzione animato |
-| 2.8 | `BudgetMeter`: breakdown visuale per-pad nella barra 40s | Aggiornamento in tempo reale |
-| 2.9 | `GapControl`: slider durata gap + pre-roll con preview numerico | Valori visibili, range corretti |
-| 2.10 | `ModeSelector`: switch Drum / Melodic con spiegazione contestuale | UI chiara, feedback visuale |
-| 2.11 | Servizio `transientDetector.ts` + `TransientOverlay.vue` | Punti transienti visualizzati sulla waveform |
-| 2.12 | `ChopToolbar.vue`: "Chop to Grid" (N segmenti uguali) + "Applica transienti" | Marker aggiornati automaticamente |
-| 2.13 | Preview per-pad: tap su pad assegnato → riproduce solo quel segmento | Playback isolato funzionante |
-| 2.14 | `PadOptionsModal`: volume individuale, reverse, rinomina, elimina | Tutte le opzioni funzionanti |
-| 2.15 | Animazioni e micro-interazioni (pad press, waveform transitions) | Feedback fluido ≥ 60fps |
+| 2.1 | Layout principale responsive (Header, Mode Selector, Overview, Detail, Grid, Transport) | Layout stabile su Chrome mobile 5-6" |
+| 2.2 | `WaveformOverview.vue`: strip non interattiva dell'intero file con finestra di navigazione draggabile | Finestra draggabile, pad assegnati visibili come blocchi colorati |
+| 2.3 | Web Worker `waveformWorker.ts` + `OffscreenCanvas`: rendering detail con downsampling | Waveform visibile e fluida ≥60fps, aggiornamento al cambio regione |
+| 2.4 | Sincronizzazione Overview ↔ Detail: drag finestra → aggiorna detail, pinch detail → aggiorna finestra | Navigazione coerente tra i due livelli |
+| 2.5 | Marker di taglio draggabili nel detail (touch-friendly, hit area ≥ 44px) | Drag preciso su touch, snap ai transienti |
+| 2.6 | Regioni colorate per pad assegnati (overlay su detail + mini-blocchi su overview) | Ogni pad ha colore unico in entrambi i livelli |
+| 2.7 | Pinch-to-zoom e pan nel detail (aggiorna la finestra dell'overview) | Gestione multi-touch |
+| 2.8 | Componenti `PadGrid` + `PadCell`: griglia 4x4 interattiva | Tap, long-press, stati visuali, indicatore reverse/volume |
+| 2.9 | `TransportBar`: Play/Stop/Seek con feedback visuale e cursore nel detail | Cursore di riproduzione animato |
+| 2.10 | `BudgetMeter`: breakdown visuale per-pad nella barra 40s | Aggiornamento in tempo reale |
+| 2.11 | `GapControl`: slider durata gap + pre-roll con preview numerico | Valori visibili, range corretti |
+| 2.12 | `ModeSelector`: switch Drum / Melodic con spiegazione contestuale | UI chiara, feedback visuale |
+| 2.13 | Servizio `transientDetector.ts` + overlay transienti nel detail | Punti transienti visualizzati, tap per snap marker |
+| 2.14 | `ChopToolbar.vue`: "Chop to Grid" (N segmenti uguali nella regione selezionata) + "Applica transienti" | Marker aggiornati automaticamente nella regione corrente |
+| 2.15 | Preview per-pad: tap su pad assegnato → zoom nel detail sulla sua regione + riproduce | Playback isolato + auto-zoom |
+| 2.16 | `PadOptionsModal`: volume individuale, reverse, rinomina, elimina | Tutte le opzioni funzionanti |
+| 2.17 | Animazioni e micro-interazioni (pad press, waveform transitions, finestra overview) | Feedback fluido ≥ 60fps |
 
-**Deliverable Fase 2**: App completa e utilizzabile su mobile. L'utente può caricare audio, tagliare visualmente (manuale, auto-detect transienti, o griglia uniforme), assegnare ai pad, ascoltare l'anteprima pad-per-pad, e generare il flusso concatenato.
+**Deliverable Fase 2**: App completa e utilizzabile su mobile. L'utente può caricare qualsiasi file audio (incluse canzoni intere), navigarlo tramite overview, tagliare visualmente segmenti specifici, assegnare ai pad, ascoltare anteprima pad-per-pad, e generare il flusso concatenato.
 
 ---
 
@@ -819,9 +931,10 @@ La barra del budget (40 secondi totali) mostra i blocchi colorati di ogni pad ne
 | 3.5.2 | **BPM Tap Tempo**: pulsante tap per rilevare il BPM. Media mobile sugli ultimi 4-8 tap con filtraggio outlier. | BPM stabile dopo 4 tap |
 | 3.5.3 | **Tune Helper**: rilevazione della nota fondamentale di ogni pad via autocorrelazione. Utile per slot Melodic e per accordatura di campioni prima di caricarli. | Nota fondamentale visualizzata (nome + Hz) |
 | 3.5.4 | **Squeeze to Fit**: se il totale supera 40s, riduce proporzionalmente la durata di tutti i segmenti (modifica endMarker). Avvisa l'utente prima di applicare. | Totale ≤ 40s dopo l'applicazione |
-| 3.5.5 | **Export Chop Markers**: esportazione dei metadati di taglio come file JSON (nomi pad, durate, ordine, sorgenti). Include opzione per generare un'immagine PNG di riepilogo della griglia come riferimento visivo per performance live. | JSON valido, PNG leggibile |
+| 3.5.5 | **PO-33 Sound Preview**: modalità di anteprima che simula il formato audio interno del PO-33 (downsample a ~23.437Hz + encoding µ-law) per sentire esattamente come suonerà il campione sul device. Implementato con `OfflineAudioContext` + µ-law encoder custom. | Preview fedele al suono PO-33, confronto A/B con originale |
+| 3.5.6 | **Export Chop Markers**: esportazione dei metadati di taglio come file JSON (nomi pad, durate, ordine, sorgenti). Include opzione per generare un'immagine PNG di riepilogo della griglia come riferimento visivo per performance live. | JSON valido, PNG leggibile |
 
-**Deliverable Fase 3.5**: Strumenti di calcolo e analisi che completano il workflow per utenti avanzati.
+**Deliverable Fase 3.5**: Strumenti di calcolo, analisi e preview fedele al suono PO-33 per utenti avanzati.
 
 ---
 
@@ -865,9 +978,9 @@ La barra del budget (40 secondi totali) mostra i blocchi colorati di ogni pad ne
 | **Fade-in nel flusso output che rompe l'auto-chop** | **Critico** | **Alta** | Parametro `context: 'output' \| 'preview'` nel §5.6 — mai applicare fade-in all'output |
 | **iOS AudioContext sampleRate fisso a 48kHz** | **Alto** | **Molto Alta** (tutti gli iPhone/iPad) | Resample obbligatorio via `OfflineAudioContext(ch, len, 44100)` in `audioDecoder.ts` |
 | Performance waveform su mobile economici | Alto | Media | OffscreenCanvas + Web Worker, downsampling aggressivo, throttle touch events |
+| Performance overview per file >10 minuti | Medio | Media | Downsampling estremo (1 valore ogni N campioni) per la strip overview; renderizzata una volta sola alla decodifica |
 | `AudioContext` bloccato su mobile | Alto | Alta | Creazione dopo gesto utente, banner "Tap to activate" |
 | Formato SY-sync errato o non verificato | Alto | Media | Test fisici precoci in Fase 3, ricerca community prima dell'implementazione |
-| File audio molto lunghi (>5 min) | Medio | Bassa | Limite upload consigliato, avviso utente, streaming progressivo |
 | Perdita dati se IndexedDB è piena | Alto | Bassa | Stima spazio disponibile, avviso preventivo |
 | Latenza audio su dispositivi economici | Medio | Media | Buffer size ottimizzato, no processing real-time non necessario |
 
@@ -877,9 +990,11 @@ La barra del budget (40 secondi totali) mostra i blocchi colorati di ogni pad ne
 
 | Termine | Definizione |
 |---|---|
-| **Auto-chop** | Algoritmo del PO-33 che taglia automaticamente un campione lungo in segmenti basandosi sui transienti |
+| **Auto-chop** | Algoritmo del PO-33 che taglia automaticamente un campione lungo in segmenti basandosi sui transienti (inaffidabile su materiale complesso) |
+| **Melodic Copy Trick** | Tecnica community: registra in slot Melodic → copia in slot Drum → il PO-33 crea 16 slice matematicamente uguali |
 | **Transiente** | Picco improvviso nel segnale audio (es. attacco di un drum hit) |
 | **PCM** | Pulse Code Modulation — rappresentazione digitale grezza dell'audio come sequenza di campioni |
+| **µ-law (mu-law)** | Algoritmo di compressione audio logaritmica usato internamente dal PO-33 (~8-bit con qualità percepita 10-12 bit) |
 | **Gap di silenzio** | Intervallo di silenzio digitale puro (0.0) inserito tra i segmenti per forzare l'auto-chop |
 | **Pre-roll** | Silenzio iniziale prima del primo pad, necessario per "armare" il PO-33 in modalità registrazione |
 | **Peak Normalization** | Processo di amplificazione dell'audio affinché il picco massimo raggiunga un livello target |
@@ -893,6 +1008,10 @@ La barra del budget (40 secondi totali) mostra i blocchi colorati di ogni pad ne
 | **Tap Tempo** | Tecnica per rilevare il BPM battendo ripetutamente un tasto a tempo |
 | **HFC** | High Frequency Content — metodo di onset detection basato sull'energia ad alta frequenza |
 | **OffscreenCanvas** | API browser che permette il rendering Canvas in un Web Worker, liberando il thread UI |
-| **Chop to Grid** | Suddivisione uniforme del file sorgente in N segmenti di durata uguale |
+| **Overview** | Strip waveform non interattiva che mostra l'intero file sorgente per la navigazione |
+| **Detail** | Canvas waveform interattivo che mostra la porzione selezionata dall'overview |
+| **Chop to Grid** | Suddivisione uniforme del file sorgente (o della regione selezionata) in N segmenti di durata uguale |
 | **Squeeze to Fit** | Riduzione proporzionale di tutti i segmenti per rientrare nel budget di 40 secondi |
 | **Reverse** | Effetto che inverte il buffer PCM di un pad, riproducendo il campione al contrario |
+| **PO-33 Sound Preview** | Modalità di anteprima che simula il formato interno del PO-33 (23kHz + µ-law) per sentire il suono finale fedele |
+| **Overloader33** | Principale competitor esistente (webapp community) — manca di waveform visuale e chopping interattivo |
