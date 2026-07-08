@@ -986,7 +986,105 @@ La barra del budget (40 secondi totali) mostra i blocchi colorati di ogni pad ne
 
 ---
 
-## 10. Glossario
+## 10. Analisi Competitiva e Riferimenti UI
+
+> Sezione aggiornata: luglio 2026. Documenta i tool esistenti nell'ecosistema PO/EP e le lezioni di design estratte dall'analisi comparativa.
+
+### 10.1 Landscape dei Tool Esistenti
+
+| Tool | Tipo | Hardware target | Waveform visuale | Chop interattivo | Offline/Web | Note |
+|---|---|---|---|---|---|---|
+| **Overloader33** | Web app (community) | PO-33 | ❌ | ❌ | ✅ | Principale competitor. Genera il flusso con gap, ma nessuna UI waveform. |
+| **Best Friend** | App iOS nativa ($7.99) | EP-133, EP-40, EP-1320 | ✅ (trim, attack, release) | ✅ (drag handles) | ❌ (USB-C richiesto) | UI eccellente, non per PO-33, non funziona senza device fisico. |
+| **Cornerman for KO II** | App iOS | EP-133 | ✅ | Parziale | ❌ (USB-C) | Sample librarian, orientato alla gestione file più che all'editing. |
+| **EP Sample Tool** | Web tool ufficiale TE | EP-133 (USB) | Parziale | ❌ | Desktop-only | Tool ufficiale Teenage Engineering, solo desktop, richiede connessione USB. |
+| **Koala Sampler** | App iOS/Android | Agnostico | ✅ | ✅ | ✅ | Generico, non ottimizzato per PO-33. Molto usato come pre-processing tool. |
+| **Audacity** | Desktop DAW | Agnostico | ✅ | ✅ | ❌ | Usato manualmente dalla community, zero automazione workflow PO-33. |
+| **PO-Companion** *(noi)* | Web app (PWA) | **PO-33 KO!** | ✅ | ✅ | ✅ | Unica soluzione web-first dedicata al PO-33 con gap calibrati automatici. |
+
+### 10.2 Analisi Dettagliata — Best Friend (Brian Holt, giugno 2026)
+
+**Best Friend** è la app iOS companion per i campionatori Teenage Engineering EP-Series (EP-133 K.O. II, EP-40, EP-1320), sviluppata da Brian Holt e pubblicata sull'App Store nel giugno 2026 a $7.99. Richiede connessione USB-C al device fisico.
+
+Link: [App Store](https://apps.apple.com/us/app/best-friend/id6782250723) | [Sito sviluppatore](https://brianholt.ca)
+
+#### Feature Set Best Friend
+
+**Pad & Waveform:**
+- Visualizzazione intera bank di 16 pad in una schermata
+- Waveform di ogni sample con nome e durata
+- Trim window visuale con handle draggabili
+- Attack e Release window visuale (envelope)
+- Pinch-to-zoom sulla waveform
+
+**Sample Editing:**
+- Normalize (boost volume al picco)
+- Reverse playback
+- Stereo → Mono conversion
+- Cambio sample rate
+- 3-band EQ
+- Repitch (velocizzazione per ridurre dimensioni file — porta del progetto open-source omonimo)
+- Cropping permanente
+
+**Sample Management:**
+- Bulk upload da Files e Video
+- Estrazione audio da video
+- Bulk move, delete, share
+- Bank Snapshots (salva/richiama configurazione completa dei 16 pad)
+
+**UI/UX:**
+- Temi multipli incluso **"Phosphor"** (palette CRT verde su nero)
+- Auto light/dark mode
+- Design nativo iOS
+
+#### Feature Comparison con PO-Companion
+
+| Feature | Best Friend | PO-Companion (luglio 2026) | Piano |
+|---|---|---|---|
+| Waveform interattiva | ✅ | ✅ (WaveformDetail) | Verificare qualità drag |
+| Trim handles drag | ✅ | ✅ (marker drag) | ✅ Già presente |
+| Attack/Release overlay | ✅ | ❌ | 🔶 Fase 3 UI |
+| Mini-waveform per pad | ✅ | ❌ | 🔶 Ottima idea |
+| Bank Snapshot | ✅ | ❌ | 🔶 Pianificato Fase 4 |
+| Normalize | ✅ | ✅ (in engine) | 🟡 Esporre come azione UI |
+| Reverse | ✅ | ✅ (pcmConcatenator) | 🟡 Solo UI |
+| Stereo → Mono | ✅ | ✅ (decoder) | 🟡 Invisibile, già attivo |
+| 3-band EQ | ✅ | ❌ | 🔴 Complessa, bassa priorità |
+| Repitch | ✅ | ❌ | 🔶 Utile per budget |
+| Phosphor/CRT theme | ✅ | ❌ | 🔶 WOW factor, Fase 3 |
+| Pinch-to-zoom | ✅ | ✅ (useTouchGestures) | ✅ Già presente |
+| Gap di silenzio per auto-chop | ❌ (non serve, USB-C) | ✅ **Unico** | ✅ Core differentiator |
+| Funziona senza hardware | ❌ Richiede device USB-C | ✅ Completamente offline | ✅ Vantaggio assoluto |
+| Target hardware PO-33 | ❌ | ✅ **Solo PO-33** | ✅ Niche focus |
+| Budget tracker visuale | ❌ | ✅ (BudgetMeter) | ✅ Già presente |
+| Preview audio Web | ❌ (usa device) | ✅ (Web Audio API) | ✅ Già presente |
+
+### 10.3 Differenziatori Chiave di PO-Companion
+
+La differenza fondamentale rispetto a **Best Friend** (e a tutti gli altri tool) è che **PO-Companion funziona interamente nel browser, senza hardware connesso**:
+
+1. **Workflow pre-hardware**: l'utente prepara i sample _prima_ di avere il PO-33 in mano, poi trasmette il file via jack audio.
+2. **Gap calibrati automatici**: nessun altro tool genera il flusso con silence gaps ottimizzati per forzare l'auto-chop in punti precisi.
+3. **Budget tracker in tempo reale**: visibilità immediata su quanta memoria del PO-33 viene consumata, comprensiva di gap e pre-roll.
+4. **Cross-platform web**: funziona su qualsiasi browser (iOS Safari, Chrome Android, desktop) senza installazioni.
+5. **Gratuito e open source**: nessuna barriera all'ingresso per la community r/pocketoperators.
+
+### 10.4 Pattern UI da Adottare (Ispirati a Best Friend)
+
+I seguenti pattern sono stati identificati dall'analisi di Best Friend come miglioramenti concreti per PO-Companion, ordinati per priorità:
+
+| Priorità | Feature | Descrizione | Fase |
+|---|---|---|---|
+| 🔴 Alta | **Mini-waveform nelle PadCell** | Ogni pad mostra una miniatura della waveform del sample caricato, con colore e durata | Fase 3 |
+| 🔴 Alta | **Normalize come azione esplicita** | Bottone "Normalize" per-pad nell'options modal, oltre alla normalizzazione globale già esistente | Fase 3 |
+| 🟡 Media | **Phosphor/CRT Theme** | Tema secondario con palette verde fosforescente su nero, togglabile da Settings. Salvato in `localStorage`. | Fase 3 |
+| 🟡 Media | **Attack/Release overlay** | Shaded area sulla waveform che mostra fade-in e fade-out dell'envelope del pad selezionato | Fase 3 |
+| 🟢 Bassa | **Bank Snapshot** | Export/import JSON della configurazione completa dei 16 pad (nome, markers, volume, reverse) | Fase 4 |
+| 🟢 Bassa | **Repitch per-pad** | Velocizzazione del sample per ridurre l'utilizzo del budget di memoria | Fase 4 |
+
+---
+
+## 11. Glossario
 
 | Termine | Definizione |
 |---|---|
@@ -1015,3 +1113,8 @@ La barra del budget (40 secondi totali) mostra i blocchi colorati di ogni pad ne
 | **Reverse** | Effetto che inverte il buffer PCM di un pad, riproducendo il campione al contrario |
 | **PO-33 Sound Preview** | Modalità di anteprima che simula il formato interno del PO-33 (23kHz + µ-law) per sentire il suono finale fedele |
 | **Overloader33** | Principale competitor esistente (webapp community) — manca di waveform visuale e chopping interattivo |
+| **Best Friend** | App iOS companion per EP-133/EP-40/EP-1320 (USB-C) — ricca UI con waveform, trim handles, temi CRT. Non supporta PO-33 né funziona offline/web. |
+| **Phosphor Theme** | Tema visivo "old-school CRT" a fosfori verdi su nero, ispirato ai terminali vintage. Adottato da Best Friend come tema alternativo. |
+| **Bank Snapshot** | Configurazione salvata di tutti i 16 pad di una bank — nome sample + impostazioni. Funzione presente in Best Friend, pianificata per PO-Companion. |
+| **Normalize** | Amplificazione automatica del peak a -1dBFS (o 0dBFS). Già implementata in `audioNormalizer.ts`; da esporre come azione esplicita per-pad nell'UI. |
+| **Repitch** | Tecnica di velocizzazione del sample per ridurne le dimensioni (sample rate aumentato, suono più acuto). Progetto standalone di Brian Holt (autore di Best Friend). |

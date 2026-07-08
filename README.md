@@ -99,23 +99,31 @@ Make sure you have [Node.js](https://nodejs.org/) installed.
 
 The development of PO-Companion is structured in several phases:
 
-*   **Phase 1: Audio Engine Core (Current)**
+*   **Phase 1: Audio Engine Core** ✅
     *   [x] File uploading, decoding, and resampling.
     *   [x] Digital silence gap insertion.
     *   [x] Anti-click (Zero-crossing & micro-fades).
     *   [x] Peak normalization.
     *   [x] WAV Export and basic debug UI.
-*   **Phase 2: Mobile-First Visual Chopper (Next)**
-    *   [ ] Interactive waveform rendering (overview + detail zoom).
-    *   [ ] Touch-friendly drag-and-drop slice markers.
-    *   [ ] Pad-by-pad preview playback.
-*   **Phase 3: PO-33 Integration & Advanced Sync**
+*   **Phase 2: Mobile-First Visual Chopper** ✅
+    *   [x] Interactive waveform rendering (WaveformOverview + WaveformDetail with OffscreenCanvas).
+    *   [x] Touch-friendly drag-and-drop slice markers (pinch, pan, long-press).
+    *   [x] Pad-by-pad preview playback (Web Audio API).
+    *   [x] 4×4 PadGrid with visual states (empty, assigned, selected, playing).
+    *   [x] BudgetMeter — real-time 40s memory tracker with per-pad breakdown.
+    *   [x] Pinia state management integration.
+*   **Phase 3: UI Polish & Power Tools** *(Next)*
+    *   [ ] Mini-waveform thumbnail inside each PadCell.
+    *   [ ] Normalize action exposed per-pad in the options modal.
+    *   [ ] Phosphor/CRT theme (green-on-black retro terminal aesthetic).
+    *   [ ] Attack/Release envelope overlay on waveform.
     *   [ ] PO-33 Sync Protocol (L=clock / R=audio split).
-    *   [ ] Direct microphone sampling.
+    *   [ ] PO-33 Sound Preview (simulating 23.4kHz 8-bit µ-law compression).
     *   [ ] Multi-source sample loading.
-*   **Phase 3.5: Power Tools**
-    *   [ ] PO-33 Sound Preview (simulating 23.4kHz 8-bit $\mu$-law compression).
+    > 💡 *UI patterns inspired by [Best Friend](https://apps.apple.com/us/app/best-friend/id6782250723) — the iOS companion app for TE EP-Series samplers. See [competitive analysis](docs/TECHNICAL.md#10-analisi-competitiva-e-riferimenti-ui) for details.*
 *   **Phase 4: Offline & PWA**
+    *   [ ] Bank Snapshot — save/recall full 16-pad configurations as JSON.
+    *   [ ] Repitch per-pad (speed-up sample to save memory budget).
     *   [ ] Local database persistence (IndexedDB/Dexie).
     *   [ ] PWA installation support for full offline usage.
 *   **Phase 5: Native App**
@@ -126,6 +134,8 @@ The development of PO-Companion is structured in several phases:
 ## 🤝 Contributing
 
 Contributions are welcome! Please check out [docs/TECHNICAL.md](file:///c:/Users/Omar/Desktop/PO-Companion/docs/TECHNICAL.md) for detailed guidelines, constraints, and architecture explanations.
+
+For UI/UX design decisions and competitive landscape analysis, see [§10 — Analisi Competitiva](docs/TECHNICAL.md#10-analisi-competitiva-e-riferimenti-ui).
 
 ## 📄 License
 
