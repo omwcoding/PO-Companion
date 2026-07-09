@@ -12,6 +12,15 @@
 
     <div class="header-right">
       <button
+        class="header-btn theme-toggle-btn"
+        :class="{ 'is-active': isPhosphor }"
+        @click="toggleTheme"
+        :title="isPhosphor ? 'Disattiva tema CRT Phosphor' : 'Attiva tema CRT Phosphor'"
+      >
+        {{ isPhosphor ? '🟢 CRT' : '⚫ CRT' }}
+      </button>
+
+      <button
         class="header-btn generate-btn"
         :disabled="!hasSource || isGenerating"
         @click="$emit('generate')"
@@ -34,10 +43,31 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useSampleStore } from '@/stores/useSampleStore'
 import { useWaveformState } from '@/composables/useWaveformState'
 import { useAudioEngine } from '@/composables/useAudioEngine'
+
+const isPhosphor = ref(false)
+
+function toggleTheme() {
+  isPhosphor.value = !isPhosphor.value
+  if (isPhosphor.value) {
+    document.documentElement.classList.add('theme-phosphor')
+    localStorage.setItem('theme', 'phosphor')
+  } else {
+    document.documentElement.classList.remove('theme-phosphor')
+    localStorage.setItem('theme', 'default')
+  }
+}
+
+onMounted(() => {
+  const savedTheme = localStorage.getItem('theme')
+  if (savedTheme === 'phosphor') {
+    isPhosphor.value = true
+    document.documentElement.classList.add('theme-phosphor')
+  }
+})
 
 interface Props {
   isGenerating?: boolean
@@ -182,6 +212,24 @@ const statusClass = computed(() => {
   cursor: not-allowed;
   background: rgba(255, 255, 255, 0.04);
   color: rgba(255, 255, 255, 0.25);
+}
+
+.theme-toggle-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1.5px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.theme-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.theme-toggle-btn.is-active {
+  background: rgba(57, 255, 20, 0.1);
+  border-color: rgba(57, 255, 20, 0.4);
+  color: #39FF14;
 }
 
 .pulse-text {

@@ -135,6 +135,8 @@ export const useSampleStore = defineStore('sample', () => {
     slot.isAssigned = false
     slot.volume = 1.0
     slot.reversed = false
+    slot.attack = 0
+    slot.release = 0
     slot.name = `Pad ${slotId}`
   }
 

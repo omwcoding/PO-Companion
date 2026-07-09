@@ -150,6 +150,24 @@ export function concatenateSlots(options: ConcatenateOptions): ConcatenationResu
       segment.reverse()
     }
 
+    // Applica custom Attack (fade-in)
+    if (seg.slot.attack && seg.slot.attack > 0) {
+      const attackSamples = Math.round(seg.slot.attack * sr)
+      const fadeLen = Math.min(attackSamples, segment.length)
+      for (let j = 0; j < fadeLen; j++) {
+        segment[j] *= (j / fadeLen)
+      }
+    }
+
+    // Applica custom Release (fade-out)
+    if (seg.slot.release && seg.slot.release > 0) {
+      const releaseSamples = Math.round(seg.slot.release * sr)
+      const fadeLen = Math.min(releaseSamples, segment.length)
+      for (let j = 0; j < fadeLen; j++) {
+        segment[segment.length - 1 - j] *= (j / fadeLen)
+      }
+    }
+
     // ── Micro-Fade OUT (se abilitato) ──────────────────────────────────────
     if (settings.antiClickMode === 'fade' || settings.antiClickMode === 'both') {
       applyMicroFadeOut(segment, segment.length, Math.min(fadeSamples, segment.length))

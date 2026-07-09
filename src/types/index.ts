@@ -20,6 +20,10 @@ export interface SampleSlot {
   color: string
   /** true = PCM invertito (effetto reverse) */
   reversed: boolean
+  /** Attack (fade-in) in secondi (default: 0) */
+  attack: number
+  /** Release (fade-out) in secondi (default: 0) */
+  release: number
 }
 
 /** Impostazioni di progetto */
@@ -150,5 +154,7 @@ export function createEmptySlot(id: number): SampleSlot {
     volume: 1.0,
     color: PAD_COLORS[(id - 1) % PAD_COLORS.length],
     reversed: false,
+    attack: 0,
+    release: 0,
   }
 }

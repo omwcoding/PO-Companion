@@ -149,7 +149,9 @@ export function useAudioEngine() {
     startMarker: number,
     endMarker: number,
     volume: number = 1.0,
-    reversed: boolean = false
+    reversed: boolean = false,
+    attack: number = 0,
+    release: number = 0
   ): Promise<void> {
     const ctx = ensureContext()
     stop()
@@ -174,6 +176,24 @@ export function useAudioEngine() {
 
     if (reversed) {
       channelData.reverse()
+    }
+
+    // Applica custom Attack (fade-in)
+    if (attack > 0) {
+      const attackSamples = Math.round(attack * sampleRate)
+      const fadeLen = Math.min(attackSamples, length)
+      for (let i = 0; i < fadeLen; i++) {
+        channelData[i] *= (i / fadeLen)
+      }
+    }
+
+    // Applica custom Release (fade-out)
+    if (release > 0) {
+      const releaseSamples = Math.round(release * sampleRate)
+      const fadeLen = Math.min(releaseSamples, length)
+      for (let i = 0; i < fadeLen; i++) {
+        channelData[length - 1 - i] *= (i / fadeLen)
+      }
     }
 
     sliceBuffer.copyToChannel(channelData, 0)

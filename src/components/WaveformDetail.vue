@@ -195,17 +195,94 @@ function draw() {
   const sel = store.selectedSlot
   if (sel && sel.isAssigned) {
     const color = PAD_COLORS[(sel.id - 1) % PAD_COLORS.length]
+    const midY = canvas.height / 2
 
-    // Start marker
+    // Start & End markers coordinate x
     const sx = timeToX(sel.startMarker, canvas.width)
-    drawMarker(ctx, sx, canvas.height, color, 'start', dpr)
-
-    // End marker
     const ex = timeToX(sel.endMarker, canvas.width)
+    const dur = sel.endMarker - sel.startMarker
+
+    // ── Attack / Release Envelopes overlay ──
+    if (dur > 0) {
+      let att = sel.attack || 0
+      let rel = sel.release || 0
+      if (att + rel > dur) {
+        const factor = dur / (att + rel)
+        att *= factor
+        rel *= factor
+      }
+
+      const ax = timeToX(sel.startMarker + att, canvas.width)
+      const rx = timeToX(sel.endMarker - rel, canvas.width)
+
+      // Draw dark transparent overlays for attenuated parts
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.45)'
+
+      // Attack fades (top & bottom)
+      if (att > 0) {
+        ctx.beginPath()
+        ctx.moveTo(sx, 0)
+        ctx.lineTo(ax, 0)
+        ctx.lineTo(ax, midY * 0.08)
+        ctx.lineTo(sx, midY)
+        ctx.closePath()
+        ctx.fill()
+
+        ctx.beginPath()
+        ctx.moveTo(sx, canvas.height)
+        ctx.lineTo(ax, canvas.height)
+        ctx.lineTo(ax, canvas.height - midY * 0.08)
+        ctx.lineTo(sx, midY)
+        ctx.closePath()
+        ctx.fill()
+      }
+
+      // Release fades (top & bottom)
+      if (rel > 0) {
+        ctx.beginPath()
+        ctx.moveTo(rx, 0)
+        ctx.lineTo(ex, 0)
+        ctx.lineTo(ex, midY)
+        ctx.lineTo(rx, midY * 0.08)
+        ctx.closePath()
+        ctx.fill()
+
+        ctx.beginPath()
+        ctx.moveTo(rx, canvas.height)
+        ctx.lineTo(ex, canvas.height)
+        ctx.lineTo(ex, midY)
+        ctx.lineTo(rx, canvas.height - midY * 0.08)
+        ctx.closePath()
+        ctx.fill()
+      }
+
+      // Draw thin dashed envelope lines on top
+      ctx.strokeStyle = color
+      ctx.lineWidth = 1 * dpr
+      ctx.setLineDash([3 * dpr, 3 * dpr])
+      ctx.beginPath()
+      
+      // Top boundary
+      ctx.moveTo(sx, midY)
+      ctx.lineTo(ax, midY * 0.08)
+      ctx.lineTo(rx, midY * 0.08)
+      ctx.lineTo(ex, midY)
+      
+      // Bottom boundary
+      ctx.moveTo(sx, midY)
+      ctx.lineTo(ax, canvas.height - midY * 0.08)
+      ctx.lineTo(rx, canvas.height - midY * 0.08)
+      ctx.lineTo(ex, midY)
+      
+      ctx.stroke()
+      ctx.setLineDash([])
+    }
+
+    // Draw Markers
+    drawMarker(ctx, sx, canvas.height, color, 'start', dpr)
     drawMarker(ctx, ex, canvas.height, color, 'end', dpr)
 
     // Duration label
-    const dur = sel.endMarker - sel.startMarker
     const midX = (sx + ex) / 2
     ctx.fillStyle = 'rgba(255,255,255,0.7)'
     ctx.font = `${10 * dpr}px Inter, sans-serif`

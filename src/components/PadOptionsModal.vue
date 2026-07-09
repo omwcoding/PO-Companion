@@ -50,10 +50,17 @@
                   type="range"
                   v-model.number="slot.volume"
                   min="0"
-                  max="1"
+                  max="2"
                   step="0.05"
                   class="volume-slider"
                 />
+                <button
+                  class="norm-pad-btn"
+                  @click="onNormalizePad"
+                  title="Normalizza il volume di questo pad a -0.3 dBFS"
+                >
+                  ⚡ Norm
+                </button>
               </div>
             </div>
 
@@ -77,6 +84,37 @@
               <div v-else class="time-range-box unassigned">
                 Non assegnato
               </div>
+            </div>
+
+            <!-- Attack / Release Envelope -->
+            <div class="control-group" v-if="slot.isAssigned">
+              <div class="label-row">
+                <label class="control-label">Attack (Fade-In)</label>
+                <span class="value-label">{{ slot.attack.toFixed(2) }}s</span>
+              </div>
+              <input
+                type="range"
+                v-model.number="slot.attack"
+                min="0"
+                max="1.0"
+                step="0.05"
+                class="volume-slider"
+              />
+            </div>
+
+            <div class="control-group" v-if="slot.isAssigned">
+              <div class="label-row">
+                <label class="control-label">Release (Fade-Out)</label>
+                <span class="value-label">{{ slot.release.toFixed(2) }}s</span>
+              </div>
+              <input
+                type="range"
+                v-model.number="slot.release"
+                min="0"
+                max="1.0"
+                step="0.05"
+                class="volume-slider"
+              />
             </div>
 
             <!-- Opzioni Boolean (Reverse, etc) -->
@@ -121,6 +159,7 @@
 import { computed } from 'vue'
 import { useSampleStore } from '@/stores/useSampleStore'
 import { useAudioEngine } from '@/composables/useAudioEngine'
+import { findPeak } from '@/utils/audioHelpers'
 
 interface Props {
   show: boolean
@@ -158,10 +197,33 @@ async function onPreview() {
       currentSlot.startMarker,
       currentSlot.endMarker,
       currentSlot.volume,
-      currentSlot.reversed
+      currentSlot.reversed,
+      currentSlot.attack || 0,
+      currentSlot.release || 0
     )
   } catch (err) {
     console.error('Preview error:', err)
+  }
+}
+
+function onNormalizePad() {
+  const currentSlot = slot.value
+  if (!currentSlot || !currentSlot.isAssigned || !currentSlot.sourceBufferId) return
+  const pcm = store.sourceBuffers.get(currentSlot.sourceBufferId)
+  if (!pcm) return
+
+  const sr = 44100
+  const startSample = Math.round(currentSlot.startMarker * sr)
+  const endSample = Math.round(currentSlot.endMarker * sr)
+
+  if (endSample > startSample) {
+    const slice = pcm.slice(startSample, endSample)
+    const peak = findPeak(slice)
+    if (peak > 0) {
+      const target = store.settings.normalizationTarget
+      const gain = target / peak
+      currentSlot.volume = Math.min(Math.round(gain * 100) / 100, 2.0)
+    }
   }
 }
 </script>
@@ -322,6 +384,28 @@ async function onPreview() {
   border-radius: 2px;
   cursor: pointer;
   accent-color: var(--pad-color);
+}
+
+.norm-pad-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 0 10px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--pad-color);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.norm-pad-btn:hover {
+  background: color-mix(in srgb, var(--pad-color) 12%, rgba(255, 255, 255, 0.08));
+  border-color: var(--pad-color);
 }
 
 /* Time range details */
