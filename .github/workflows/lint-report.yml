@@ -2,7 +2,7 @@ name: Global Linting Report
 
 on: [push]
 
-# Aggiungiamo esplicitamente il permesso di creare Issue
+# Permessi necessari per permettere al bot di leggere il codice e gestire le Issue
 permissions:
   issues: write
   contents: read
@@ -12,31 +12,45 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout del codice
-        uses: actions/checkout@v4 # Aggiornato a v4
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4 # Aggiornato a v4
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '20' # Versione necessaria per evitare il crash di ESLint v9+
 
       - name: Installa dipendenze
         run: npm install
 
       - name: Esegui ESLint e salva il report
         run: npx eslint . --format stylish > lint-report.txt
-        # Permette alla pipeline di continuare anche se il linter trova errori
+        # Fondamentale: dice ad Actions di non fermarsi se ESLint trova errori
         continue-on-error: true 
 
-      - name: Crea un'Issue su GitHub con il report
+      - name: Gestisci l'Issue del Linter su GitHub
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Contenuto del report:"
-          cat lint-report.txt
-          
+          # 1. Cerca se esiste già un'issue aperta creata in precedenza
+          ISSUE_NUMBER=$(gh issue list --search "Linter Report" --state open --json number --jq '.[0].number')
+
+          # 2. Controlla se il file del report contiene testo (quindi ci sono errori)
           if [ -s lint-report.txt ]; then
-            gh issue create --title "🚨 Report Errori Linter" --body-file lint-report.txt
-            echo "Issue creata con successo!"
+            if [ -n "$ISSUE_NUMBER" ]; then
+              # Se l'issue esiste già, la aggiorna sovrascrivendo il testo
+              gh issue edit "$ISSUE_NUMBER" --body-file lint-report.txt
+              echo "Issue #$ISSUE_NUMBER aggiornata con la nuova lista errori."
+            else
+              # Se non esiste, ne crea una nuova
+              gh issue create --title "Linter Report" --body-file lint-report.txt
+              echo "Nuova issue creata."
+            fi
           else
-            echo "Nessun errore trovato o file vuoto. Nessuna issue creata."
+            # 3. Se il report è vuoto (0 errori) e c'è un'issue aperta, la chiude
+            if [ -n "$ISSUE_NUMBER" ]; then
+              gh issue close "$ISSUE_NUMBER" --comment "Ottimo lavoro! Tutti gli errori di linting sono stati risolti. 🎉"
+              echo "Issue #$ISSUE_NUMBER chiusa con successo!"
+            else
+              echo "Nessun errore trovato e nessuna issue da chiudere. Ottimo lavoro!"
+            fi
           fi
