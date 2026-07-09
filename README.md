@@ -12,19 +12,14 @@
 
 It solves the unpredictability of the PO-33 KO!'s built-in transient-based auto-chop algorithm by allowing users to prepare, chop, normalize, and concatenate samples directly on their mobile device or computer before transmitting them as a single, perfectly timed audio stream.
 
-```
-┌─────────────┐     ┌──────────────────┐     ┌─────────────┐
-│  Audio File  │────▶│   PO-Companion   │────▶│   PO-33 KO! │
-│  (mp3/wav)   │     │  (Smartphone)    │     │  (Line-In)   │
-└─────────────┘     └──────────────────┘     └─────────────┘
-                          │
-                    ┌─────┴──────┐
-                    │ 1. Import  │
-                    │ 2. Chop    │
-                    │ 3. Concat  │
-                    │ 4. Normal. │
-                    │ 5. Send    │
-                    └────────────┘
+```mermaid
+flowchart LR
+    A["Audio File<br/>(mp3/wav)"] --> B["<b>PO-Companion</b><br/>(Smartphone)<br/>───────────────<br/>1. Import<br/>2. Chop<br/>3. Concat<br/>4. Normalize<br/>5. Send"]
+    B --> C["PO-33 KO!<br/>(Line-In)"]
+    
+    style A text-align:center
+    style B text-align:left
+    style C text-align:center
 ```
 
 ---
