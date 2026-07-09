@@ -144,6 +144,8 @@ Contributions are welcome! Please check out [docs/TECHNICAL.md](file:///c:/Users
 
 For UI/UX design decisions and competitive landscape analysis, see [§10 — Analisi Competitiva](docs/TECHNICAL.md#10-analisi-competitiva-e-riferimenti-ui).
 
-## 📄 License
+## 📄 Copyright and License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+**© 2026 Omar Balde (omwcoding). All rights reserved.**
+
+The source code of this project is made public strictly for portfolio and reference purposes. **No license is granted** for the use, modification, distribution, or reproduction, in whole or in part, of this code or its assets without explicit written permission from the author.
