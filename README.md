@@ -1,21 +1,34 @@
 # 🎛️ PO-Companion
 
-> **Mobile-first utility for visual chopping of audio samples destined for the Teenage Engineering PO-33 KO!**
+> **Web-based Audio Slicer & Sample-Prep Workstation**  
+> *Optimized for the Teenage Engineering PO-33 KO! and general-purpose hardware samplers.*
 
 ---
 
-<a href="https://deepscan.io/dashboard#view=project&tid=30173&pid=32051&bid=1042046"><img src="https://deepscan.io/api/teams/30173/projects/32051/branches/1042046/badge/grade.svg" alt="DeepScan grade"></a>
+<div align="center">
+
+[![Vue](https://img.shields.io/badge/Vue-3.x-4fc08d.svg?style=flat-square&logo=vue.js)](https://vuejs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6.svg?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Vite](https://img.shields.io/badge/Vite-6.x-646cff.svg?style=flat-square&logo=vite)](https://vite.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4.0-38bdf8.svg?style=flat-square&logo=tailwindcss)](https://tailwindcss.com/)
+[![DeepScan Grade](https://deepscan.io/api/teams/30173/projects/32051/branches/1042046/badge/grade.svg)](https://deepscan.io/dashboard#view=project&tid=30173&pid=32051&bid=1042046)
+[![License: Proprietary](https://img.shields.io/badge/License-Proprietary-red.svg?style=flat-square)](#-copyright-and-license)
+[![Status: Active Development](https://img.shields.io/badge/Status-Active_Development-orange.svg?style=flat-square)](#-roadmap--phases)
+
+</div>
+
+---
 
 ## 📖 Overview
 
-**PO-Companion** is a companion web application designed to streamline the sample preparation workflow for the **Teenage Engineering PO-33 KO!** pocket sampler. 
+**PO-Companion** is a high-precision, mobile-friendly audio preparation and slicing workstation. Originally designed to solve the unpredictable auto-chopping and tight memory constraints of the **Teenage Engineering PO-33 KO!**, it functions as a visual, client-side audio preparation tool that formats, optimizes, and packs samples for any hardware or software sampler.
 
-It solves the unpredictability of the PO-33 KO!'s built-in transient-based auto-chop algorithm by allowing users to prepare, chop, normalize, and concatenate samples directly on their mobile device or computer before transmitting them as a single, perfectly timed audio stream.
+By running entirely in the browser (leveraging the Web Audio API and IndexedDB for local persistence), it offers instant sample preparation with zero server latency, zero data collection, and a fully offline-capable architecture.
 
 ```mermaid
 flowchart LR
-    A["Audio File<br/>(mp3/wav)"] --> B["<b>PO-Companion</b><br/>(Smartphone)<br/>───────────────<br/>1. Import<br/>2. Chop<br/>3. Concat<br/>4. Normalize<br/>5. Send"]
-    B --> C["PO-33 KO!<br/>(Line-In)"]
+    A["Audio File<br/>(mp3/wav)"] --> B["<b>PO-Companion</b><br/>(Visual Workspace)<br/>───────────────<br/>1. Import & Visualize<br/>2. Crop & Repitch<br/>3. Anti-Click Snap<br/>4. Normalize & Pack<br/>5. Send / Export"]
+    B --> C["Hardware Sampler<br/>(Line-In or File Import)"]
     
     style A text-align:center
     style B text-align:left
@@ -24,29 +37,24 @@ flowchart LR
 
 ---
 
-## 🛠️ The Problem & The Solution
+## ⚡ Key Features
 
-### The Problem
-* The PO-33 KO! has a limited memory of **~40 seconds** total, shared across all slots.
-* The automatic chopping (auto-chop) algorithm in **Drum Mode** is unpredictable, unconfigurable, and prone to error.
-* Incorrect chops require deleting the sample and repeating the entire analog recording process.
-* Trimming samples inside the PO-33 does not reclaim memory—the device keeps the full recording.
-
-### The Solution: The "Silence Gap" Trick
-PO-Companion lets you load an audio file, visually define start/end markers for up to 16 pads, and automatically concatenates them into a single audio file with precise **digital silence gaps** (defaulting to 20ms) between them. 
-
-When the PO-33 KO! records this stream in Drum Mode, it detects the transition from silence to sound and places the slice markers exactly where they belong.
-
-#### ⚡ Key Features
-* **Silence Gap Insertion**: Inserts configurable digital silence gaps (`0.0` PCM) to force precise PO-33 auto-chops.
+### 🎹 Universal Audio Slicing Engine
+* **Sub-Millisecond Precision**: Zoom and pan into waveforms on mobile and desktop for pixel-perfect start/end marker placements.
 * **Anti-Click Protection**: 
-  * *Micro-Fade Out*: Applies a 2ms linear fade-out at the end of each slice to avoid clicking.
-  * *Zero-Crossing Snap*: Automatically snaps markers to the nearest zero-crossing point of the waveform.
-* **Smart Peak Normalization**: Automatically normalizes audio to 0dBFS or -0.3dBFS to ensure the best recording level for the PO-33 ADC.
-* **Memory Budget Tracker**: Visualizes how much of the PO-33's ~40-second memory budget is being consumed by your current setup (including pre-roll and silence gaps) taking pitch/resampling speed into account.
-* **Pitch Shifting (Speed/Resampling)**: Shift pitch/speed (from -12 to +12 semitoni) to fit longer sounds into the 40s memory budget.
-* **Local Persistence (IndexedDB)**: Auto-saves workspace slots and files to IndexedDB, keeping work safe on reload.
-* **Preset Manager**: Save projects locally in IndexedDB, load Factory presets from the server, or import/export JSON files.
+  * *Zero-Crossing Snap*: Automatically snaps markers to the nearest zero-crossing point of the waveform to avoid transients mismatch.
+  * *Micro-Fade Out*: Applies a 2ms linear fade-out at the end of each slice to ensure smooth transitions and eliminate pop sounds.
+* **Smart Peak Normalization**: Automatically normalizes audio to `0dBFS` or `-0.3dBFS` to maximize headroom and optimize input levels.
+* **Linear Repitch & Speed Shifting**: Shift pitch/speed (from -12 to +12 semitones) using high-quality linear resampling to compress long samples and fit them into restrictive memory budgets.
+
+### 🎛️ Pocket Operator (PO-33 KO!) Integration
+* **Silence Gap Packing**: Inserts configurable digital silence gaps (`0.0` PCM) between chops. When recorded in Drum Mode, this forces the PO-33's auto-chop algorithm to slice exactly where the gaps are.
+* **Memory Budget Tracker**: Visualizes in real-time how much of the PO-33's ~40-second memory budget is being consumed, factoring in pre-roll, gap sizes, and active repitching.
+* **PO-33 Sync Protocol**: Optionally generates a hardware click-track sync signal on the Left channel while routing the sample stream to the Right channel (L=Sync / R=Audio split).
+
+### 💾 Session & Project Management
+* **Zero-Cloud Privacy**: All files and presets are stored locally on your device via **IndexedDB**—no audio is ever uploaded to a server.
+* **Preset Manager**: Save customized project slots, recall factory presets, or export/import your setups as `.json` project files.
 
 ---
 
@@ -83,64 +91,55 @@ Make sure you have [Node.js](https://nodejs.org/) installed.
 
 ## 📂 Project Structure
 
-* `src/App.vue`: Main application entry point and user interface.
-* `src/composables/useAudioEngine.ts`: Manages the Web Audio API context, loading files, and playing/stopping preview buffers.
+* `src/App.vue`: Main application UI and orchestration.
+* `src/composables/useAudioEngine.ts`: Manages Web Audio API context, buffer previews, and audio state.
 * `src/services/`:
-  * [db.ts](file:///c:/Users/Omar/Desktop/PO-Companion/src/services/db.ts) — Native IndexedDB client wrapper for audio files, project states and user presets.
-  * [audioDecoder.ts](file:///c:/Users/Omar/Desktop/PO-Companion/src/services/audioDecoder.ts) — Decodes and resamples audio files (resampling to 44.1kHz mono).
-  * [audioNormalizer.ts](file:///c:/Users/Omar/Desktop/PO-Companion/src/services/audioNormalizer.ts) — Applies peak normalization.
-  * [pitchShifter.ts](file:///c:/Users/Omar/Desktop/PO-Companion/src/services/pitchShifter.ts) — Performs linear resampling to repitch PCM arrays.
-  * [projectSnapshot.ts](file:///c:/Users/Omar/Desktop/PO-Companion/src/services/projectSnapshot.ts) — Serializes workspace state into self-contained JSON snapshots (Base64 audio).
-  * [pcmConcatenator.ts](file:///c:/Users/Omar/Desktop/PO-Companion/src/services/pcmConcatenator.ts) — Handles slot chopping, micro-fades, zero-crossing detection, and silence gap concatenation.
-  * [wavEncoder.ts](file:///c:/Users/Omar/Desktop/PO-Companion/src/services/wavEncoder.ts) — Encodes Float32 PCM arrays into exportable WAV files.
-* `src/stores/useSampleStore.ts`: Pinia store containing active samples, slot configurations, preset IDs and application settings.
-* `docs/TECHNICAL.md`: Full technical specifications and architecture details.
+  * [db.ts](file:///c:/Users/Omar/Desktop/PO-Companion/src/services/db.ts) — Native IndexedDB client wrapper for storing workspace, audio files, and presets.
+  * [audioDecoder.ts](file:///c:/Users/Omar/Desktop/PO-Companion/src/services/audioDecoder.ts) — Decodes and downmixes files to 44.1kHz mono.
+  * [audioNormalizer.ts](file:///c:/Users/Omar/Desktop/PO-Companion/src/services/audioNormalizer.ts) — Peak normalization algorithms.
+  * [pitchShifter.ts](file:///c:/Users/Omar/Desktop/PO-Companion/src/services/pitchShifter.ts) — Pitch/Speed shifting via linear resampling.
+  * [projectSnapshot.ts](file:///c:/Users/Omar/Desktop/PO-Companion/src/services/projectSnapshot.ts) — Serializes state to JSON snapshots (Base64 audio).
+  * [pcmConcatenator.ts](file:///c:/Users/Omar/Desktop/PO-Companion/src/services/pcmConcatenator.ts) — Handles slot splitting, micro-fades, zero-crossing, and silence gaps.
+  * [wavEncoder.ts](file:///c:/Users/Omar/Desktop/PO-Companion/src/services/wavEncoder.ts) — Encodes raw float PCM to exportable WAV files.
+* `src/stores/useSampleStore.ts`: Pinia store for app-wide reactive state.
+* `docs/TECHNICAL.md`: Full architectural specification and hardware research details.
 
 ---
 
-## 🗺️ Roadmap & Phases
+## 🗺️ Roadmap & Commercial Vision
 
-The development of PO-Companion is structured in several phases:
+The application is structured to evolve from a PO-33 utility to a comprehensive standalone companion app:
 
-*   **Phase 1: Audio Engine Core** ✅
-    *   [x] File uploading, decoding, and resampling.
-    *   [x] Digital silence gap insertion.
-    *   [x] Anti-click (Zero-crossing & micro-fades).
-    *   [x] Peak normalization.
-    *   [x] WAV Export and basic debug UI.
-*   **Phase 2: Mobile-First Visual Chopper** ✅
-    *   [x] Interactive waveform rendering (WaveformOverview + WaveformDetail with OffscreenCanvas).
-    *   [x] Touch-friendly drag-and-drop slice markers (pinch, pan, long-press).
-    *   [x] Pad-by-pad preview playback (Web Audio API).
-    *   [x] 4×4 PadGrid with visual states (empty, assigned, selected, playing).
-    *   [x] BudgetMeter — real-time 40s memory tracker with per-pad breakdown.
-    *   [x] Pinia state management integration.
-*   **Phase 3: UI Polish & Power Tools** ✅
-    *   [x] Phosphor/CRT theme (green-on-black retro terminal aesthetic).
-    *   [x] PO-33 Sync Protocol (L=clock / R=audio split).
-    *   [x] Multi-source sample loading.
-*   **Phase 4: Persistence, Pitch Shifting & Presets** ✅
-    *   [x] Local database persistence (IndexedDB).
-    *   [x] Repitch per-pad (pitch shifting to save memory budget).
-    *   [x] Project Snapshots (Save/Recall slots and audio in JSON).
-    *   [x] Quick-Access Preset strip (dropdown, quick-save, save-as, quick-delete).
-    *   [x] Factory Sound Presets (pre-packaged banks loaded from `/presets/`).
-*   **Phase 5: Offline PWA & Reskin** *(Next)*
-    *   [ ] Redesign visual interfaces.
-    *   [ ] PWA installation support for full offline usage.
-*   **Phase 6: Native App**
-    *   [ ] Compilation for iOS & Android using Capacitor.
+*   **Phase 1-4: Core Engine, Visual Chopper, & Presets** 🏃 *In Progress*
+    *   Visual multi-pad editor, Zero-crossing snap, micro-fades, repitching, IndexedDB saving, and custom PO-33 sync engine.
+*   **Phase 5: Offline PWA & Layout Reskin** ➡️ *Next*
+    *   Full PWA service-worker registration for 100% offline mobile/desktop usage.
+    *   Refined desktop-responsive layout.
+*   **Phase 6: Universal Sampler & Export Options** 📅 *Planned*
+    *   **ZIP Export**: Download all selected pads as a ZIP file containing individual, normalized WAV files (perfect for EP-133, SP-404, or DAWs).
+    *   **Universal Grids**: Custom grid sizes (e.g. 1x8, 2x8, 4x4) and target-device export presets.
+*   **Phase 7: Native App Compilation** 📅 *Planned*
+    *   Native compilation for iOS & Android using Capacitor/Cordova.
+    *   Desktop standalone build using Tauri.
 
 ---
-
-## 🤝 Contributing
-
-Contributions are welcome! Please check out [docs/TECHNICAL.md](file:///c:/Users/Omar/Desktop/PO-Companion/docs/TECHNICAL.md) for detailed guidelines, constraints, and architecture explanations.
-
-For UI/UX design decisions and competitive landscape analysis, see [§10 — Analisi Competitiva](docs/TECHNICAL.md#10-analisi-competitiva-e-riferimenti-ui).
 
 ## 📄 Copyright and License
 
 **© 2026 Omar Balde (omwcoding). All rights reserved.**
 
 The source code of this project is made public strictly for portfolio and reference purposes. **No license is granted** for the use, modification, distribution, or reproduction, in whole or in part, of this code or its assets without explicit written permission from the author.
+
+---
+
+## ⚖️ Trademark Disclaimer
+
+*PO-Companion is an independent software tool and is not affiliated, associated, authorized, endorsed by, or in any way officially connected with Teenage Engineering AB, Korg Inc., or any of their subsidiaries or affiliates. "Teenage Engineering", "Pocket Operator", "PO-33 KO!", "EP-133 KO II", and related brand names are registered trademarks of their respective owners. The use of these names in this project is strictly for interoperability demonstration and compatibility reference purposes.*
+
+---
+
+## 💬 Feedback & Inquiries
+
+Since this project is currently proprietary and under active commercial development, I am not accepting public code contributions or Pull Requests. 
+
+However, bug reports, feature suggestions, or business inquiries are highly welcome! Feel free to open an **Issue** or reach out directly.
