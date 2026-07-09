@@ -262,7 +262,7 @@ export const useSampleStore = defineStore('sample', () => {
       for (const file of files) {
         // Re-crea l'AudioBuffer
         const buffer = audioCtx.createBuffer(1, file.pcmData.length, file.sampleRate)
-        buffer.copyToChannel(file.pcmData as Float32Array<ArrayBuffer>, 0)
+        buffer.copyToChannel(file.pcmData, 0)
 
         // Ricalcola i picchi di overview
         const { computeOverviewPeaks } = await import('@/utils/peakAnalyzer')
@@ -340,7 +340,7 @@ export const useSampleStore = defineStore('sample', () => {
 
         // Crea l'AudioBuffer
         const buffer = audioCtx.createBuffer(1, pcm.length, file.sampleRate)
-        buffer.copyToChannel(pcm as Float32Array<ArrayBuffer>, 0)
+        buffer.copyToChannel(pcm, 0)
 
         // Calcola overview peaks
         const overviewPeaks = computeOverviewPeaks(pcm, 1000)
