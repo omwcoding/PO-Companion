@@ -17,7 +17,7 @@ export interface ProjectSnapshot {
 /**
  * Converte un Float32Array in una stringa codificata Base64.
  */
-function float32ArrayToBase64(array: Float32Array): string {
+export function float32ArrayToBase64(array: Float32Array): string {
   const buffer = array.buffer
   const bytes = new Uint8Array(buffer)
   let binary = ''
@@ -42,18 +42,17 @@ export function base64ToFloat32Array(base64: string): Float32Array {
 }
 
 /**
- * Genera ed esporta lo snapshot JSON del progetto corrente (comprendente l'audio in Base64).
+ * Costruisce l'oggetto snapshot di progetto.
  */
-export function exportProjectSnapshot(
+export function buildProjectSnapshot(
   slots: SampleSlot[],
   settings: ProjectSettings,
   activeSourceId: string,
   sourceBuffers: Map<string, Float32Array>,
   bufferMeta: Map<string, { fileName: string; duration: number; sampleRate: number }>
-): void {
+): ProjectSnapshot {
   const audioFiles: ProjectSnapshot['audioFiles'] = []
 
-  // Estrae tutti i file audio presenti nello store
   for (const [id, pcm] of sourceBuffers.entries()) {
     const meta = bufferMeta.get(id)
     if (!meta) continue
@@ -67,14 +66,26 @@ export function exportProjectSnapshot(
     })
   }
 
-  const snapshot: ProjectSnapshot = {
+  return {
     version: '1.0',
     activeSourceId,
-    settings,
-    slots,
+    settings: JSON.parse(JSON.stringify(settings)),
+    slots: JSON.parse(JSON.stringify(slots)),
     audioFiles
   }
+}
 
+/**
+ * Genera ed esporta lo snapshot JSON del progetto corrente (comprendente l'audio in Base64).
+ */
+export function exportProjectSnapshot(
+  slots: SampleSlot[],
+  settings: ProjectSettings,
+  activeSourceId: string,
+  sourceBuffers: Map<string, Float32Array>,
+  bufferMeta: Map<string, { fileName: string; duration: number; sampleRate: number }>
+): void {
+  const snapshot = buildProjectSnapshot(slots, settings, activeSourceId, sourceBuffers, bufferMeta)
   const jsonString = JSON.stringify(snapshot, null, 2)
   const blob = new Blob([jsonString], { type: 'application/json' })
   const url = URL.createObjectURL(blob)

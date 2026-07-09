@@ -6,6 +6,7 @@ import { useAudioEngine } from '@/composables/useAudioEngine'
 
 // Components
 import AppHeader from '@/components/AppHeader.vue'
+import PresetsModal from '@/components/PresetsModal.vue'
 import FileUploadBar from '@/components/FileUploadBar.vue'
 import ModeSelector from '@/components/ModeSelector.vue'
 import ChopToolbar from '@/components/ChopToolbar.vue'
@@ -22,7 +23,9 @@ import { concatenateSlots } from '@/services/pcmConcatenator'
 import { normalize } from '@/services/audioNormalizer'
 import { generateSyncInterleaved } from '@/services/syncGenerator'
 import { downloadWAV } from '@/services/wavEncoder'
-import { exportProjectSnapshot } from '@/services/projectSnapshot'
+import { buildProjectSnapshot, parseProjectSnapshot } from '@/services/projectSnapshot'
+import { loadUserPresets, saveUserPreset, deleteUserPreset, type UserPreset } from '@/services/db'
+import { v4 as uuidv4 } from 'uuid'
 import { formatDuration, formatDBFS } from '@/utils/formatters'
 import type { TransientPoint } from '@/types'
 
@@ -35,7 +38,11 @@ const transients = ref<TransientPoint[]>([])
 const showTransients = ref(false)
 const showSettings = ref(false)
 const showOptionsModal = ref(false)
+const showPresetsModal = ref(false)
 const optionsSlotId = ref(0)
+
+const factoryPresets = ref<{ id: string; name: string; fileName: string; description: string }[]>([])
+const userPresets = ref<UserPreset[]>([])
 
 const isGenerating = ref(false)
 const generateError = ref('')
@@ -183,28 +190,161 @@ function exportWAV() {
   downloadWAV(store.outputBuffer, `${name}-po33`, store.settings.syncEnabled ? 2 : 1)
 }
 
-function exportProject() {
-  exportProjectSnapshot(
-    store.slots,
-    store.settings,
-    store.activeSourceId,
-    store.sourceBuffers,
-    store.bufferMeta
-  )
-}
 
 async function importProject(snapshot: any) {
   try {
     const ctx = engine.getContext()
     await store.importProjectSnapshot(snapshot, ctx)
+    await refreshPresetsList()
   } catch (err) {
     alert(`Errore nell'importazione dello snapshot: ${err instanceof Error ? err.message : String(err)}`)
+  }
+}
+
+async function refreshPresetsList() {
+  try {
+    const res = await fetch('/presets/manifest.json')
+    if (res.ok) {
+      factoryPresets.value = await res.json()
+    }
+  } catch (e) {
+    console.warn('Errore caricamento factory presets manifest:', e)
+  }
+  try {
+    userPresets.value = await loadUserPresets()
+  } catch (e) {
+    console.error('Errore caricamento user presets:', e)
+  }
+}
+
+async function handlePresetSelect(value: string) {
+  if (!value) {
+    store.activePresetId = ''
+    store.activePresetName = ''
+    return
+  }
+
+  const ctx = engine.getContext()
+
+  if (value.startsWith('factory:')) {
+    const id = value.replace('factory:', '')
+    const preset = factoryPresets.value.find(p => p.id === id)
+    if (!preset) return
+    if (confirm(`Caricare il Factory Preset "${preset.name}"? Questo sovrascriverà il tuo progetto corrente.`)) {
+      try {
+        const res = await fetch(`/presets/${preset.fileName}`)
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const text = await res.text()
+        const snapshot = parseProjectSnapshot(text)
+        await store.importProjectSnapshot(snapshot, ctx)
+        store.activePresetId = value
+        store.activePresetName = preset.name
+      } catch (err) {
+        alert(`Errore nel caricamento del preset: ${err instanceof Error ? err.message : String(err)}`)
+      }
+    }
+  } else if (value.startsWith('user:')) {
+    const id = value.replace('user:', '')
+    const preset = userPresets.value.find(p => p.id === id)
+    if (!preset) return
+    if (confirm(`Caricare il preset "${preset.name}"? Questo sovrascriverà il tuo progetto corrente.`)) {
+      try {
+        await store.importProjectSnapshot(preset.snapshot, ctx)
+        store.activePresetId = value
+        store.activePresetName = preset.name
+      } catch (err) {
+        alert(`Errore nel caricamento del preset: ${err instanceof Error ? err.message : String(err)}`)
+      }
+    }
+  }
+}
+
+async function handleQuickSave() {
+  if (!store.activePresetId || !store.activePresetId.startsWith('user:')) {
+    await handleSaveAs()
+    return
+  }
+
+  const id = store.activePresetId.replace('user:', '')
+  const existing = userPresets.value.find(p => p.id === id)
+  const name = existing ? existing.name : 'Mio Preset'
+
+  try {
+    const snapshot = buildProjectSnapshot(
+      store.slots,
+      store.settings,
+      store.activeSourceId,
+      store.sourceBuffers,
+      store.bufferMeta
+    )
+
+    await saveUserPreset({
+      id,
+      name,
+      createdAt: Date.now(),
+      snapshot
+    })
+
+    await refreshPresetsList()
+    alert(`Preset "${name}" sovrascritto e salvato correttamente!`)
+  } catch (err) {
+    alert(`Errore durante il salvataggio rapido: ${err instanceof Error ? err.message : String(err)}`)
+  }
+}
+
+async function handleSaveAs() {
+  const name = prompt("Inserisci il nome per il nuovo preset:")
+  if (!name || !name.trim()) return
+
+  try {
+    const snapshot = buildProjectSnapshot(
+      store.slots,
+      store.settings,
+      store.activeSourceId,
+      store.sourceBuffers,
+      store.bufferMeta
+    )
+
+    const newId = uuidv4()
+    await saveUserPreset({
+      id: newId,
+      name: name.trim(),
+      createdAt: Date.now(),
+      snapshot
+    })
+
+    await refreshPresetsList()
+    store.activePresetId = `user:${newId}`
+    store.activePresetName = name.trim()
+    alert(`Preset "${name}" salvato con successo!`)
+  } catch (err) {
+    alert(`Errore durante il salvataggio: ${err instanceof Error ? err.message : String(err)}`)
+  }
+}
+
+async function handleDeleteCurrent() {
+  if (!store.activePresetId || !store.activePresetId.startsWith('user:')) return
+
+  const id = store.activePresetId.replace('user:', '')
+  const name = store.activePresetName || 'questo preset'
+
+  if (confirm(`Sei sicuro di voler eliminare permanentemente il preset "${name}"? questa operazione è irreversibile.`)) {
+    try {
+      await deleteUserPreset(id)
+      await refreshPresetsList()
+      store.activePresetId = ''
+      store.activePresetName = ''
+      alert(`Preset "${name}" eliminato con successo.`)
+    } catch (err) {
+      alert(`Errore nell'eliminazione del preset: ${err instanceof Error ? err.message : String(err)}`)
+    }
   }
 }
 
 onMounted(async () => {
   const ctx = engine.getContext()
   await store.loadFromDB(ctx)
+  await refreshPresetsList()
 })
 </script>
 
@@ -213,10 +353,15 @@ onMounted(async () => {
     <!-- Header -->
     <AppHeader
       :isGenerating="isGenerating"
+      :factoryPresets="factoryPresets"
+      :userPresets="userPresets"
       @generate="generateStream"
       @export="exportWAV"
-      @export-snapshot="exportProject"
-      @import-snapshot="importProject"
+      @open-presets="showPresetsModal = true"
+      @select-preset="handlePresetSelect"
+      @quick-save="handleQuickSave"
+      @save-as="handleSaveAs"
+      @delete-current="handleDeleteCurrent"
     />
 
     <!-- Main Workspace -->
@@ -456,6 +601,13 @@ onMounted(async () => {
       :show="showOptionsModal"
       :slotId="optionsSlotId"
       @close="showOptionsModal = false"
+    />
+
+    <!-- Presets & Import Modal -->
+    <PresetsModal
+      :isOpen="showPresetsModal"
+      @close="showPresetsModal = false"
+      @import-snapshot="importProject"
     />
   </div>
 </template>

@@ -10,15 +10,73 @@
       </span>
     </div>
 
-    <div class="header-right">
-      <input
-        type="file"
-        ref="snapshotInputRef"
-        style="display: none"
-        accept=".json"
-        @change="onSnapshotImport"
-      />
+    <div class="header-center">
+      <div v-if="hasSource" class="preset-strip">
+        <select
+          :value="store.activePresetId"
+          @change="onPresetSelectChange"
+          class="preset-select"
+        >
+          <option value="">-- Nessun Preset --</option>
 
+          <optgroup v-if="factoryPresets.length > 0" label="Factory Presets">
+            <option
+              v-for="p in factoryPresets"
+              :key="p.id"
+              :value="'factory:' + p.id"
+            >
+              📁 {{ p.name }}
+            </option>
+          </optgroup>
+
+          <optgroup v-if="userPresets.length > 0" label="I Miei Preset">
+            <option
+              v-for="p in userPresets"
+              :key="p.id"
+              :value="'user:' + p.id"
+            >
+              💾 {{ p.name }}
+            </option>
+          </optgroup>
+        </select>
+
+        <button
+          class="strip-btn"
+          :disabled="!store.activePresetId.startsWith('user:')"
+          @click="$emit('quick-save')"
+          title="Sovrascrivi Preset Corrente (Salvataggio rapido)"
+        >
+          💾
+        </button>
+
+        <button
+          class="strip-btn"
+          @click="$emit('save-as')"
+          title="Salva come Nuovo Preset"
+        >
+          📝
+        </button>
+
+        <button
+          class="strip-btn"
+          :disabled="!store.activePresetId.startsWith('user:')"
+          @click="$emit('delete-current')"
+          title="Elimina Preset Corrente"
+        >
+          🗑️
+        </button>
+
+        <button
+          class="strip-btn"
+          @click="$emit('open-presets')"
+          title="Gestione Avanzata Preset & Progetti"
+        >
+          ⚙️
+        </button>
+      </div>
+    </div>
+
+    <div class="header-right">
       <button
         class="header-btn theme-toggle-btn"
         :class="{ 'is-active': isPhosphor }"
@@ -26,23 +84,6 @@
         :title="isPhosphor ? 'Disattiva tema CRT Phosphor' : 'Attiva tema CRT Phosphor'"
       >
         {{ isPhosphor ? '🟢 CRT' : '⚫ CRT' }}
-      </button>
-
-      <button
-        class="header-btn snapshot-btn"
-        @click="triggerSnapshotInput"
-        title="Importa la griglia ed i campioni da file JSON"
-      >
-        📂 Importa JSON
-      </button>
-
-      <button
-        class="header-btn snapshot-btn"
-        :disabled="!hasSource"
-        @click="$emit('export-snapshot')"
-        title="Salva l'intero progetto (inclusi i file audio) in un file JSON"
-      >
-        💾 Esporta JSON
       </button>
 
       <button
@@ -72,10 +113,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useSampleStore } from '@/stores/useSampleStore'
 import { useWaveformState } from '@/composables/useWaveformState'
 import { useAudioEngine } from '@/composables/useAudioEngine'
-import { parseProjectSnapshot } from '@/services/projectSnapshot'
 
 const isPhosphor = ref(false)
-const snapshotInputRef = ref<HTMLInputElement | null>(null)
 
 function toggleTheme() {
   isPhosphor.value = !isPhosphor.value
@@ -88,30 +127,6 @@ function toggleTheme() {
   }
 }
 
-function triggerSnapshotInput() {
-  snapshotInputRef.value?.click()
-}
-
-function onSnapshotImport(e: Event) {
-  const target = e.target as HTMLInputElement
-  const file = target.files?.[0]
-  if (!file) return
-
-  const reader = new FileReader()
-  reader.onload = (event) => {
-    try {
-      const text = event.target?.result as string
-      const snapshot = parseProjectSnapshot(text)
-      emit('import-snapshot', snapshot)
-    } catch (err) {
-      alert(`Errore caricamento snapshot JSON: ${err instanceof Error ? err.message : String(err)}`)
-    } finally {
-      target.value = ''
-    }
-  }
-  reader.readAsText(file)
-}
-
 onMounted(() => {
   const savedTheme = localStorage.getItem('theme')
   if (savedTheme === 'phosphor') {
@@ -122,6 +137,8 @@ onMounted(() => {
 
 interface Props {
   isGenerating?: boolean
+  factoryPresets: any[]
+  userPresets: any[]
 }
 
 defineProps<Props>()
@@ -129,13 +146,21 @@ defineProps<Props>()
 const emit = defineEmits<{
   (e: 'generate'): void
   (e: 'export'): void
-  (e: 'export-snapshot'): void
-  (e: 'import-snapshot', snapshot: any): void
+  (e: 'open-presets'): void
+  (e: 'select-preset', val: string): void
+  (e: 'quick-save'): void
+  (e: 'save-as'): void
+  (e: 'delete-current'): void
 }>()
 
 const store = useSampleStore()
 const waveform = useWaveformState()
 const engine = useAudioEngine()
+
+function onPresetSelectChange(e: Event) {
+  const select = e.target as HTMLSelectElement
+  emit('select-preset', select.value)
+}
 
 const hasSource = computed(() => waveform.hasSource.value)
 
@@ -297,6 +322,79 @@ const statusClass = computed(() => {
 @keyframes pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.5; }
+}
+
+.header-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  max-width: 380px;
+  margin: 0 16px;
+}
+
+.preset-strip {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 2px 4px;
+  width: 100%;
+  gap: 4px;
+}
+
+.preset-select {
+  flex-grow: 1;
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  outline: none;
+  padding: 4px 6px;
+  cursor: pointer;
+  max-width: 260px;
+}
+
+.preset-select optgroup {
+  background: #1a1a26;
+  color: white;
+}
+
+.preset-select option {
+  background: #1a1a26;
+  color: white;
+}
+
+.strip-btn {
+  background: transparent;
+  border: none;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  transition: all 0.15s;
+}
+
+.strip-btn:hover:not(:disabled) {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.strip-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .header-center {
+    display: none;
+  }
 }
 
 @media (max-width: 480px) {

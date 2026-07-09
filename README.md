@@ -46,7 +46,10 @@ When the PO-33 KO! records this stream in Drum Mode, it detects the transition f
   * *Micro-Fade Out*: Applies a 2ms linear fade-out at the end of each slice to avoid clicking.
   * *Zero-Crossing Snap*: Automatically snaps markers to the nearest zero-crossing point of the waveform.
 * **Smart Peak Normalization**: Automatically normalizes audio to 0dBFS or -0.3dBFS to ensure the best recording level for the PO-33 ADC.
-* **Memory Budget Tracker**: Visualizes how much of the PO-33's ~40-second memory budget is being consumed by your current setup (including pre-roll and silence gaps).
+* **Memory Budget Tracker**: Visualizes how much of the PO-33's ~40-second memory budget is being consumed by your current setup (including pre-roll and silence gaps) taking pitch/resampling speed into account.
+* **Pitch Shifting (Speed/Resampling)**: Shift pitch/speed (from -12 to +12 semitoni) to fit longer sounds into the 40s memory budget.
+* **Local Persistence (IndexedDB)**: Auto-saves workspace slots and files to IndexedDB, keeping work safe on reload.
+* **Preset Manager**: Save projects locally in IndexedDB, load Factory presets from the server, or import/export JSON files.
 
 ---
 
@@ -86,11 +89,14 @@ Make sure you have [Node.js](https://nodejs.org/) installed.
 * `src/App.vue`: Main application entry point and user interface.
 * `src/composables/useAudioEngine.ts`: Manages the Web Audio API context, loading files, and playing/stopping preview buffers.
 * `src/services/`:
+  * [db.ts](file:///c:/Users/Omar/Desktop/PO-Companion/src/services/db.ts) — Native IndexedDB client wrapper for audio files, project states and user presets.
   * [audioDecoder.ts](file:///c:/Users/Omar/Desktop/PO-Companion/src/services/audioDecoder.ts) — Decodes and resamples audio files (resampling to 44.1kHz mono).
   * [audioNormalizer.ts](file:///c:/Users/Omar/Desktop/PO-Companion/src/services/audioNormalizer.ts) — Applies peak normalization.
+  * [pitchShifter.ts](file:///c:/Users/Omar/Desktop/PO-Companion/src/services/pitchShifter.ts) — Performs linear resampling to repitch PCM arrays.
+  * [projectSnapshot.ts](file:///c:/Users/Omar/Desktop/PO-Companion/src/services/projectSnapshot.ts) — Serializes workspace state into self-contained JSON snapshots (Base64 audio).
   * [pcmConcatenator.ts](file:///c:/Users/Omar/Desktop/PO-Companion/src/services/pcmConcatenator.ts) — Handles slot chopping, micro-fades, zero-crossing detection, and silence gap concatenation.
   * [wavEncoder.ts](file:///c:/Users/Omar/Desktop/PO-Companion/src/services/wavEncoder.ts) — Encodes Float32 PCM arrays into exportable WAV files.
-* `src/stores/useSampleStore.ts`: Pinia store containing active samples, slot configurations, and application settings.
+* `src/stores/useSampleStore.ts`: Pinia store containing active samples, slot configurations, preset IDs and application settings.
 * `docs/TECHNICAL.md`: Full technical specifications and architecture details.
 
 ---
@@ -112,21 +118,20 @@ The development of PO-Companion is structured in several phases:
     *   [x] 4×4 PadGrid with visual states (empty, assigned, selected, playing).
     *   [x] BudgetMeter — real-time 40s memory tracker with per-pad breakdown.
     *   [x] Pinia state management integration.
-*   **Phase 3: UI Polish & Power Tools** *(Next)*
-    *   [ ] Mini-waveform thumbnail inside each PadCell.
-    *   [ ] Normalize action exposed per-pad in the options modal.
-    *   [ ] Phosphor/CRT theme (green-on-black retro terminal aesthetic).
-    *   [ ] Attack/Release envelope overlay on waveform.
-    *   [ ] PO-33 Sync Protocol (L=clock / R=audio split).
-    *   [ ] PO-33 Sound Preview (simulating 23.4kHz 8-bit µ-law compression).
-    *   [ ] Multi-source sample loading.
-    > 💡 *UI patterns inspired by [Best Friend](https://apps.apple.com/us/app/best-friend/id6782250723) — the iOS companion app for TE EP-Series samplers. See [competitive analysis](docs/TECHNICAL.md#10-analisi-competitiva-e-riferimenti-ui) for details.*
-*   **Phase 4: Offline & PWA**
-    *   [ ] Bank Snapshot — save/recall full 16-pad configurations as JSON.
-    *   [ ] Repitch per-pad (speed-up sample to save memory budget).
-    *   [ ] Local database persistence (IndexedDB/Dexie).
+*   **Phase 3: UI Polish & Power Tools** ✅
+    *   [x] Phosphor/CRT theme (green-on-black retro terminal aesthetic).
+    *   [x] PO-33 Sync Protocol (L=clock / R=audio split).
+    *   [x] Multi-source sample loading.
+*   **Phase 4: Persistence, Pitch Shifting & Presets** ✅
+    *   [x] Local database persistence (IndexedDB).
+    *   [x] Repitch per-pad (pitch shifting to save memory budget).
+    *   [x] Project Snapshots (Save/Recall slots and audio in JSON).
+    *   [x] Quick-Access Preset strip (dropdown, quick-save, save-as, quick-delete).
+    *   [x] Factory Sound Presets (pre-packaged banks loaded from `/presets/`).
+*   **Phase 5: Offline PWA & Reskin** *(Next)*
+    *   [ ] Redesign visual interfaces.
     *   [ ] PWA installation support for full offline usage.
-*   **Phase 5: Native App**
+*   **Phase 6: Native App**
     *   [ ] Compilation for iOS & Android using Capacitor.
 
 ---

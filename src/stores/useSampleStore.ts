@@ -54,6 +54,10 @@ export const useSampleStore = defineStore('sample', () => {
   /** Log degli step dell'ultima concatenazione */
   const concatenationLog = ref<string[]>([])
 
+  /** Preset attivo corrente */
+  const activePresetId = ref('')
+  const activePresetName = ref('')
+
   // ── Getters (Computed) ───────────────────────────────────────────────────
 
   /** Pad assegnati, ordinati per id */
@@ -107,6 +111,16 @@ export const useSampleStore = defineStore('sample', () => {
   watch(activeSourceId, (newId) => {
     if (isRestoringFromDB.value) return
     saveProjectState('activeSourceId', newId)
+  })
+
+  watch(activePresetId, (newId) => {
+    if (isRestoringFromDB.value) return
+    saveProjectState('activePresetId', newId)
+  })
+
+  watch(activePresetName, (newName) => {
+    if (isRestoringFromDB.value) return
+    saveProjectState('activePresetName', newName)
   })
 
   // ── Actions ──────────────────────────────────────────────────────────────
@@ -281,6 +295,16 @@ export const useSampleStore = defineStore('sample', () => {
       } else {
         activeSourceId.value = [...sourceBuffers.value.keys()][0] || ''
       }
+
+      const savedPresetId = await loadProjectState('activePresetId')
+      if (savedPresetId) {
+        activePresetId.value = savedPresetId
+      }
+
+      const savedPresetName = await loadProjectState('activePresetName')
+      if (savedPresetName) {
+        activePresetName.value = savedPresetName
+      }
     } catch (err) {
       console.error('Errore durante il caricamento da IndexedDB:', err)
     } finally {
@@ -365,6 +389,8 @@ export const useSampleStore = defineStore('sample', () => {
     outputDurationSeconds,
     selectedSlotId,
     activeSourceId,
+    activePresetId,
+    activePresetName,
     settings,
     concatenationLog,
 

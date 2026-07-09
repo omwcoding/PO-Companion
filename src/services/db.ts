@@ -1,5 +1,5 @@
 const DB_NAME = 'POCompanionDB'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
 export interface DBStoredFile {
   id: string
@@ -7,6 +7,13 @@ export interface DBStoredFile {
   pcmData: Float32Array
   duration: number
   sampleRate: number
+}
+
+export interface UserPreset {
+  id: string
+  name: string
+  createdAt: number
+  snapshot: any // ProjectSnapshot (JSON format)
 }
 
 function openDB(): Promise<IDBDatabase> {
@@ -21,6 +28,9 @@ function openDB(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains('project_state')) {
         db.createObjectStore('project_state')
+      }
+      if (!db.objectStoreNames.contains('user_presets')) {
+        db.createObjectStore('user_presets', { keyPath: 'id' })
       }
     }
   })
@@ -76,7 +86,6 @@ export async function saveProjectState(key: string, value: any): Promise<void> {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction('project_state', 'readwrite')
     const store = transaction.objectStore('project_state')
-    // Usiamo il valore grezzo (essendo un oggetto JSON semplice è pienamente serializzabile in IndexedDB)
     const request = store.put(value, key)
     request.onsuccess = () => resolve()
     request.onerror = () => reject(request.error)
@@ -98,7 +107,49 @@ export async function loadProjectState(key: string): Promise<any> {
 }
 
 /**
- * Cancella tutti i dati in IndexedDB (usato per il reset completo).
+ * Salva un preset creato dall'utente in IndexedDB.
+ */
+export async function saveUserPreset(preset: UserPreset): Promise<void> {
+  const db = await openDB()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction('user_presets', 'readwrite')
+    const store = transaction.objectStore('user_presets')
+    const request = store.put(preset)
+    request.onsuccess = () => resolve()
+    request.onerror = () => reject(request.error)
+  })
+}
+
+/**
+ * Elimina un preset salvato in IndexedDB.
+ */
+export async function deleteUserPreset(id: string): Promise<void> {
+  const db = await openDB()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction('user_presets', 'readwrite')
+    const store = transaction.objectStore('user_presets')
+    const request = store.delete(id)
+    request.onsuccess = () => resolve()
+    request.onerror = () => reject(request.error)
+  })
+}
+
+/**
+ * Carica tutti i preset salvati dall'utente in IndexedDB.
+ */
+export async function loadUserPresets(): Promise<UserPreset[]> {
+  const db = await openDB()
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction('user_presets', 'readonly')
+    const store = transaction.objectStore('user_presets')
+    const request = store.getAll()
+    request.onsuccess = () => resolve(request.result || [])
+    request.onerror = () => reject(request.error)
+  })
+}
+
+/**
+ * Cancella lo stato di lavoro corrente (audio e griglia) in IndexedDB, preservando i preset dell'utente.
  */
 export async function clearDB(): Promise<void> {
   const db = await openDB()
