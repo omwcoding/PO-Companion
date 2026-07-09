@@ -181,7 +181,7 @@ export function concatenateSlots(options: ConcatenateOptions): ConcatenationResu
 
     // Applica repitch se specificato
     if (seg.slot.pitch !== 0) {
-      segment = repitchPCM(segment, seg.slot.pitch)
+      segment = repitchPCM(segment, seg.slot.pitch) as Float32Array<ArrayBuffer>
     }
 
     // Copia il segmento nell'output con clamp di sicurezza per la lunghezza

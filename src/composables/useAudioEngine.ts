@@ -129,9 +129,9 @@ export function useAudioEngine() {
     if (numChannels === 1) {
       let channelData = new Float32Array(data)
       if (simulatePO33) {
-        channelData = simulatePO33LoFi(channelData)
+        channelData = simulatePO33LoFi(channelData) as Float32Array<ArrayBuffer>
       }
-      buffer.copyToChannel(channelData, 0)
+      buffer.copyToChannel(channelData as Float32Array<ArrayBuffer>, 0)
     } else {
       // De-interleva L (sync) e R (audio)
       const left = new Float32Array(frames)
@@ -143,11 +143,11 @@ export function useAudioEngine() {
 
       // Applica la simulazione solo al canale R (audio), NON a L (sync clock)
       if (simulatePO33) {
-        right = simulatePO33LoFi(right)
+        right = simulatePO33LoFi(right) as Float32Array<ArrayBuffer>
       }
 
-      buffer.copyToChannel(left, 0)
-      buffer.copyToChannel(right, 1)
+      buffer.copyToChannel(left as Float32Array<ArrayBuffer>, 0)
+      buffer.copyToChannel(right as Float32Array<ArrayBuffer>, 1)
     }
     return buffer
   }
@@ -233,16 +233,16 @@ export function useAudioEngine() {
 
     // Applica pitch shifting (resampling)
     if (pitch !== 0) {
-      channelData = repitchPCM(channelData, pitch)
+      channelData = repitchPCM(channelData, pitch) as Float32Array<ArrayBuffer>
     }
 
     // Applica simulazione lo-fi PO-33
     if (simulatePO33) {
-      channelData = simulatePO33LoFi(channelData)
+      channelData = simulatePO33LoFi(channelData) as Float32Array<ArrayBuffer>
     }
 
     const sliceBuffer = ctx.createBuffer(1, channelData.length, sampleRate)
-    sliceBuffer.copyToChannel(channelData, 0)
+    sliceBuffer.copyToChannel(channelData as Float32Array<ArrayBuffer>, 0)
 
     return new Promise((resolve) => {
       duration.value = sliceBuffer.duration
