@@ -48,6 +48,8 @@ export interface ProjectSettings {
   fadeDurationMs: number
   /** Modalità destinazione sul PO-33 */
   slotMode: 'drum' | 'melodic'
+  /** Abilita la simulazione audio lo-fi del PO-33 nell'anteprima */
+  po33Simulation: boolean
 }
 
 /** Progetto salvato */
@@ -132,6 +134,7 @@ export const DEFAULT_SETTINGS: ProjectSettings = {
   antiClickMode: 'both',
   fadeDurationMs: 2,
   slotMode: 'drum',
+  po33Simulation: false,
 }
 
 /** Colori predefiniti per i 16 pad */

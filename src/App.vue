@@ -20,6 +20,7 @@ import PadOptionsModal from '@/components/PadOptionsModal.vue'
 import { detectTransients as runTransientDetection, snapToTransient } from '@/services/transientDetector'
 import { concatenateSlots } from '@/services/pcmConcatenator'
 import { normalize } from '@/services/audioNormalizer'
+import { generateSyncInterleaved } from '@/services/syncGenerator'
 import { downloadWAV } from '@/services/wavEncoder'
 import { formatDuration, formatDBFS } from '@/utils/formatters'
 import type { TransientPoint } from '@/types'
@@ -134,7 +135,7 @@ async function generateStream() {
       settings: store.settings,
     })
 
-    // Normalizzazione
+    // Normalizzazione (avviene sempre in mono prima del sync per evitare bias del picco del clock)
     const norm = normalize(result.data, store.settings.normalizationMode, store.settings.normalizationTarget)
     normResult.value = {
       peakBefore: norm.peakBefore,
@@ -142,7 +143,13 @@ async function generateStream() {
       gain: norm.gain
     }
 
-    store.setOutputBuffer(result.data, result.durationSeconds, result.log)
+    let finalData = norm.data
+    if (store.settings.syncEnabled) {
+      finalData = generateSyncInterleaved(norm.data, store.settings.syncBpm)
+      result.log.push(`✓ Segnale Sync PO-33 generato a ${store.settings.syncBpm} BPM (Canale L) ed interleto con l'audio (Canale R).`)
+    }
+
+    store.setOutputBuffer(finalData, result.durationSeconds, result.log)
   } catch (err) {
     generateError.value = err instanceof Error ? err.message : String(err)
   } finally {
@@ -154,7 +161,7 @@ function exportWAV() {
   if (!store.outputBuffer) return
   const originalName = [...store.bufferMeta.values()][0]?.fileName || 'po-companion-output'
   const name = originalName.replace(/\.[^.]+$/, '')
-  downloadWAV(store.outputBuffer, `${name}-po33`)
+  downloadWAV(store.outputBuffer, `${name}-po33`, store.settings.syncEnabled ? 2 : 1)
 }
 </script>
 
@@ -242,6 +249,43 @@ function exportWAV() {
                   >
                     <option value="global">Globale (intero flusso)</option>
                     <option value="per-pad">Per-pad (ogni segmento)</option>
+                  </select>
+                </div>
+
+                <div class="setting-item">
+                  <label class="setting-label">Sync Clock (Canale L)</label>
+                  <select
+                    class="input-select"
+                    :value="store.settings.syncEnabled ? 'on' : 'off'"
+                    @change="store.updateSettings({ syncEnabled: ($event.target as HTMLSelectElement).value === 'on' })"
+                  >
+                    <option value="off">Disabilitato (Dual Mono)</option>
+                    <option value="on">Abilitato (L=Clock, R=Audio)</option>
+                  </select>
+                </div>
+
+                <div class="setting-item" v-if="store.settings.syncEnabled">
+                  <label class="setting-label">BPM Sync Clock</label>
+                  <div class="setting-control">
+                    <input
+                      type="range"
+                      min="60" max="220" step="1"
+                      :value="store.settings.syncBpm"
+                      @input="store.updateSettings({ syncBpm: +($event.target as HTMLInputElement).value })"
+                    />
+                    <span class="setting-value">{{ store.settings.syncBpm }} BPM</span>
+                  </div>
+                </div>
+
+                <div class="setting-item">
+                  <label class="setting-label">Simulatore PO-33 (Preview)</label>
+                  <select
+                    class="input-select"
+                    :value="store.settings.po33Simulation ? 'on' : 'off'"
+                    @change="store.updateSettings({ po33Simulation: ($event.target as HTMLSelectElement).value === 'on' })"
+                  >
+                    <option value="off">Disabilitato (Qualità CD)</option>
+                    <option value="on">Abilitato (23kHz, 8-bit µ-law)</option>
                   </select>
                 </div>
               </div>

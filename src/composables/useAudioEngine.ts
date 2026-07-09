@@ -1,5 +1,6 @@
 import { ref, computed, readonly } from 'vue'
 import { PO33_SAMPLE_RATE } from '@/types'
+import { simulatePO33LoFi } from '@/services/po33Simulator'
 
 /**
  * Composable che gestisce l'AudioContext singleton e il playback audio.
@@ -112,22 +113,54 @@ export function useAudioEngine() {
   }
 
   /**
-   * Crea un AudioBuffer mono da un Float32Array già processato.
-   * Usato per il playback del flusso concatenato.
+   * Crea un AudioBuffer mono o stereo da un Float32Array (eventualmente interleaved).
+   * Applica la simulazione lo-fi del PO-33 se il flag simulatePO33 è attivo (solo al canale audio).
    */
-  function createBufferFromFloat32(data: Float32Array): AudioBuffer {
+  function createBufferFromFloat32(
+    data: Float32Array,
+    numChannels: number = 1,
+    simulatePO33: boolean = false
+  ): AudioBuffer {
     const ctx = ensureContext()
-    const buffer = ctx.createBuffer(1, data.length, PO33_SAMPLE_RATE)
-    const channelData = new Float32Array(data)
-    buffer.copyToChannel(channelData, 0)
+    const frames = data.length / numChannels
+    const buffer = ctx.createBuffer(numChannels, frames, PO33_SAMPLE_RATE)
+
+    if (numChannels === 1) {
+      let channelData = new Float32Array(data)
+      if (simulatePO33) {
+        channelData = simulatePO33LoFi(channelData)
+      }
+      buffer.copyToChannel(channelData, 0)
+    } else {
+      // De-interleva L (sync) e R (audio)
+      const left = new Float32Array(frames)
+      let right = new Float32Array(frames)
+      for (let i = 0; i < frames; i++) {
+        left[i] = data[i * 2]
+        right[i] = data[i * 2 + 1]
+      }
+
+      // Applica la simulazione solo al canale R (audio), NON a L (sync clock)
+      if (simulatePO33) {
+        right = simulatePO33LoFi(right)
+      }
+
+      buffer.copyToChannel(left, 0)
+      buffer.copyToChannel(right, 1)
+    }
     return buffer
   }
 
   /**
    * Riproduce un Float32Array direttamente (senza passare per AudioBuffer esterno).
    */
-  function playFloat32(data: Float32Array, startOffset: number = 0): void {
-    const buffer = createBufferFromFloat32(data)
+  function playFloat32(
+    data: Float32Array,
+    startOffset: number = 0,
+    numChannels: number = 1,
+    simulatePO33: boolean = false
+  ): void {
+    const buffer = createBufferFromFloat32(data, numChannels, simulatePO33)
     play(buffer, startOffset)
   }
 
@@ -142,7 +175,7 @@ export function useAudioEngine() {
   }
 
   /**
-   * Riproduce un intervallo specifico di un AudioBuffer, applicando volume e reverse.
+   * Riproduce un intervallo specifico di un AudioBuffer, applicando volume, reverse, fades e simulazione lo-fi opzionale.
    */
   function previewSlice(
     buffer: AudioBuffer,
@@ -151,7 +184,8 @@ export function useAudioEngine() {
     volume: number = 1.0,
     reversed: boolean = false,
     attack: number = 0,
-    release: number = 0
+    release: number = 0,
+    simulatePO33: boolean = false
   ): Promise<void> {
     const ctx = ensureContext()
     stop()
@@ -165,7 +199,7 @@ export function useAudioEngine() {
     const length = Math.max(1, endSample - startSample)
 
     const sliceBuffer = ctx.createBuffer(1, length, sampleRate)
-    const channelData = new Float32Array(length)
+    let channelData = new Float32Array(length)
 
     // Estrae i campioni del canale 0 per l'anteprima
     const origData = buffer.getChannelData(0)
@@ -194,6 +228,11 @@ export function useAudioEngine() {
       for (let i = 0; i < fadeLen; i++) {
         channelData[length - 1 - i] *= (i / fadeLen)
       }
+    }
+
+    // Applica simulazione lo-fi PO-33
+    if (simulatePO33) {
+      channelData = simulatePO33LoFi(channelData)
     }
 
     sliceBuffer.copyToChannel(channelData, 0)

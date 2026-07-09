@@ -199,7 +199,8 @@ async function onPreview() {
       currentSlot.volume,
       currentSlot.reversed,
       currentSlot.attack || 0,
-      currentSlot.release || 0
+      currentSlot.release || 0,
+      store.settings.po33Simulation
     )
   } catch (err) {
     console.error('Preview error:', err)

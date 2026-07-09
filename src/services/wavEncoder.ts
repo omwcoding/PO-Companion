@@ -65,8 +65,12 @@ export function encodeWAV(
  * @param data      Float32Array del flusso audio normalizzato
  * @param filename  Nome del file da scaricare (senza estensione)
  */
-export function downloadWAV(data: Float32Array, filename: string = 'po-companion-output'): void {
-  const blob = encodeWAV(data)
+export function downloadWAV(
+  data: Float32Array,
+  filename: string = 'po-companion-output',
+  numChannels: number = 1
+): void {
+  const blob = encodeWAV(data, PO33_SAMPLE_RATE, numChannels)
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url

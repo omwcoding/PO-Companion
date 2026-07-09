@@ -104,15 +104,24 @@ function togglePlay() {
   const output = store.outputBuffer
   if (!output || output.length === 0) return
 
-  // Play output buffer starting at current time
-  engine.playFloat32(output, engine.currentTime.value)
+  // Play output buffer starting at current time, supporting stereo split & PO-33 simulation
+  engine.playFloat32(
+    output,
+    engine.currentTime.value,
+    store.settings.syncEnabled ? 2 : 1,
+    store.settings.po33Simulation
+  )
 }
 
 function seekToStart() {
   engine.stop()
   waveform.setPlayhead(0)
   if (store.outputBuffer) {
-    const buf = engine.createBufferFromFloat32(store.outputBuffer)
+    const buf = engine.createBufferFromFloat32(
+      store.outputBuffer,
+      store.settings.syncEnabled ? 2 : 1,
+      store.settings.po33Simulation
+    )
     engine.seek(0, buf)
   }
 }
@@ -121,7 +130,11 @@ function seekToEnd() {
   engine.stop()
   waveform.setPlayhead(totalDuration.value)
   if (store.outputBuffer) {
-    const buf = engine.createBufferFromFloat32(store.outputBuffer)
+    const buf = engine.createBufferFromFloat32(
+      store.outputBuffer,
+      store.settings.syncEnabled ? 2 : 1,
+      store.settings.po33Simulation
+    )
     engine.seek(totalDuration.value, buf)
   }
 }
@@ -134,7 +147,11 @@ function onProgressClick(e: MouseEvent) {
 
   const output = store.outputBuffer
   if (output) {
-    const buf = engine.createBufferFromFloat32(output)
+    const buf = engine.createBufferFromFloat32(
+      output,
+      store.settings.syncEnabled ? 2 : 1,
+      store.settings.po33Simulation
+    )
     engine.seek(targetTime, buf)
   }
 }
