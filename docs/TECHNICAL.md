@@ -134,7 +134,7 @@ Se trovato: endSample = zc
 
 > [!CAUTION]
 > **Il fade-in all'inizio del segmento va applicato SOLO nell'anteprima interna**, non nel flusso di output verso il PO-33.
-> Il PO-33 rileva il **transiente** in ingresso per fare il chop: un fade-in rende l'attacco morbido e il dispositivo potrebbe **non rilevare il taglio** o tagliare in ritardo. Vedi §5.6 per i dettagli implementativi.
+> Il PO-33 rileva il **transiente** in ingresso per fare il chop: un fade-in rende l'attacco morbido e il dispositivo potrebbe **non rilevare il taglio** o tagliare in ritardo. Vedi §5.7 per i dettagli implementativi.
 
 ### 2.3 Comunicazione Audio Smartphone → PO-33
 
@@ -412,16 +412,31 @@ interface TransientPoint {
 }
 ```
 
-### 4.2 Schema IndexedDB (Dexie.js)
+### 4.2 Schema IndexedDB (Client Nativo)
 
-```typescript
-const db = new Dexie('POCompanionDB')
+L'applicazione utilizza un client IndexedDB nativo (senza dipendenze esterne come Dexie.js) con versione database `2` per massimizzare la velocità e minimizzare il peso dell'app bundle.
 
-db.version(1).stores({
-  projects:     'id, name, updatedAt',
-  audioBuffers: 'id, fileName'
-})
-```
+#### Database: `POCompanionDB` (Version: 2)
+
+1. **`audio_files`** (Store con `keyPath: 'id'`)
+   - `id`: string (UUID generato all'upload)
+   - `fileName`: string
+   - `pcmData`: Float32Array (campioni audio decodificati e pronti all'uso)
+   - `duration`: number
+   - `sampleRate`: number
+
+2. **`project_state`** (Store key-value semplice)
+   - `slots`: array di `SampleSlot` (stato attuale dei 16 pad, inclusi markers, pitch, volume, reverse)
+   - `settings`: impostazioni di normalizzazione, pre-roll e BPM sync
+   - `activeSourceId`: ID del file audio attualmente visualizzato
+   - `activePresetId`: ID del preset attualmente caricato
+   - `activePresetName`: nome del preset attualmente caricato
+
+3. **`user_presets`** (Store con `keyPath: 'id'`)
+   - `id`: string (UUID)
+   - `name`: string (nome del preset utente)
+   - `createdAt`: number (timestamp millisecondi)
+   - `snapshot`: snapshot di progetto autonomo serializzato con l'audio in formato Base64.
 
 ---
 
@@ -467,8 +482,8 @@ Algoritmo:
 5. output = new Float32Array(totalLength)  // Inizializzato a 0.0
 6. offset = prefixSamples  // Salta il pre-roll (già 0.0)
 7. Per ogni slot (i):
-   a. Applica zero-crossing snap a endSample (vedi §5.6)
-   b. Applica micro-fade OUT sugli ultimi fadeSamples del segmento (vedi §5.6)
+   a. Applica zero-crossing snap a endSample (vedi §5.7)
+   b. Applica micro-fade OUT sugli ultimi fadeSamples del segmento (vedi §5.7)
    c. Se slot.reversed → inverti i campioni del segmento prima di copiare
    d. Copia PCM: output.set(segment, offset)
    e. offset += segmentLength
@@ -483,7 +498,7 @@ Algoritmo:
 > Tuttavia, è buona pratica verificare con un assert in fase di debug.
 
 > [!NOTE]
-> **Fade-in NON applicato nel flusso di output.** Il PO-33 rileva l'attacco del transiente per eseguire il chop: un fade-in renderebbe l'inizio morbido e potrebbe causare rilevazione mancata o ritardata. Il fade-in è applicato **esclusivamente** nel player di anteprima interno (vedi §5.6).
+> **Fade-in NON applicato nel flusso di output.** Il PO-33 rileva l'attacco del transiente per eseguire il chop: un fade-in renderebbe l'inizio morbido e potrebbe causare rilevazione mancata o ritardata. Il fade-in è applicato **esclusivamente** nel player di anteprima interno (vedi §5.7).
 
 ### 5.3 Normalizzazione Audio (Peak Normalization)
 
@@ -523,7 +538,38 @@ Conversione Float32 → Int16:
   int16[i] = Math.max(-32768, Math.min(32767, Math.round(float32[i] × 32767)))
 ```
 
-### 5.5 Rendering Waveform (OffscreenCanvas + Web Worker)
+### 5.5 Pitch Shifting dei Pad (Resampling Lineare)
+
+Per velocizzare (risparmiando secondi di memoria) o rallentare i campioni per singolo pad, l'applicazione applica un algoritmo di resampling ad interpolazione lineare.
+
+```
+Input:  pcmData (Float32Array)
+        pitch (semitoni da -12 a +12)
+        sampleRate (44100)
+
+Output: Float32Array ri-campionato
+
+Algoritmo:
+1. Calcola il fattore di resampling (velocità):
+   factor = Math.pow(2, pitch / 12)  // es. +12 semitoni raddoppia la velocità (factor = 2.0)
+2. Calcola la nuova lunghezza del segmento:
+   newLength = Math.floor(pcmData.length / factor)
+3. Inizializza il nuovo array di output:
+   output = new Float32Array(newLength)
+4. Per ogni indice i dell'output (0 → newLength - 1):
+   a. Trova la posizione originale corrispondente:
+      origPos = i × factor
+   b. Calcola gli indici interi adiacenti:
+      indexA = Math.floor(origPos)
+      indexB = Math.min(indexA + 1, pcmData.length - 1)
+   c. Calcola la frazione (peso dell'interpolazione):
+      weight = origPos - indexA
+   d. Applica interpolazione lineare:
+      output[i] = pcmData[indexA] × (1.0 - weight) + pcmData[indexB] × weight
+5. Return output
+```
+
+### 5.6 Rendering Waveform (OffscreenCanvas + Web Worker)
 
 ```
 Input:  AudioBuffer, canvasWidth, canvasHeight
@@ -546,7 +592,7 @@ Algoritmo (downsampling per performance):
 > [!NOTE]
 > Usare **OffscreenCanvas** trasferito a un Web Worker è fondamentale per dispositivi Android economici. Mantiene il thread UI libero durante il rendering della waveform di file audio lunghi, garantendo ≥60fps nell'interazione touch.
 
-### 5.6 Protezione Anti-Click (Micro-Fade + Zero-Crossing)
+### 5.7 Protezione Anti-Click (Micro-Fade + Zero-Crossing)
 
 Applicato durante la concatenazione (§5.2) per prevenire click/pop ai bordi dei segmenti.
 
@@ -974,8 +1020,8 @@ La barra del budget (40 secondi totali) mostra i blocchi colorati di ogni pad ne
 | Rischio | Impatto | Probabilità | Mitigazione |
 |---|---|---|---|
 | Gap di silenzio non rilevato dal PO-33 | **Critico** | Media | Gap configurabile, test fisici precoci, fade-out pre-gap |
-| **Click/Pop ai bordi dei segmenti** | **Critico** | **Alta** | **Micro-fade 2ms + zero-crossing snap (§5.6). Fade-in SOLO in preview** |
-| **Fade-in nel flusso output che rompe l'auto-chop** | **Critico** | **Alta** | Parametro `context: 'output' \| 'preview'` nel §5.6 — mai applicare fade-in all'output |
+| **Click/Pop ai bordi dei segmenti** | **Critico** | **Alta** | **Micro-fade 2ms + zero-crossing snap (§5.7). Fade-in SOLO in preview** |
+| **Fade-in nel flusso output che rompe l'auto-chop** | **Critico** | **Alta** | Parametro `context: 'output' \| 'preview'` nel §5.7 — mai applicare fade-in all'output |
 | **iOS AudioContext sampleRate fisso a 48kHz** | **Alto** | **Molto Alta** (tutti gli iPhone/iPad) | Resample obbligatorio via `OfflineAudioContext(ch, len, 44100)` in `audioDecoder.ts` |
 | Performance waveform su mobile economici | Alto | Media | OffscreenCanvas + Web Worker, downsampling aggressivo, throttle touch events |
 | Performance overview per file >10 minuti | Medio | Media | Downsampling estremo (1 valore ogni N campioni) per la strip overview; renderizzata una volta sola alla decodifica |
