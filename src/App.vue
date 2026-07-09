@@ -259,7 +259,7 @@ async function handlePresetSelect(value: string) {
   }
 }
 
-const eslintTestVariable = 'test';
+let eslintTestVariable = 42
 
 async function handleQuickSave() {
   if (!store.activePresetId || !store.activePresetId.startsWith('user:')) {
