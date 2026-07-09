@@ -4,6 +4,8 @@
 
 ---
 
+<a href="https://deepscan.io/dashboard#view=project&tid=30173&pid=32051&bid=1042046"><img src="https://deepscan.io/api/teams/30173/projects/32051/branches/1042046/badge/grade.svg" alt="DeepScan grade"></a>
+
 ## 📖 Overview
 
 **PO-Companion** is a companion web application designed to streamline the sample preparation workflow for the **Teenage Engineering PO-33 KO!** pocket sampler. 
