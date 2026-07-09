@@ -127,7 +127,8 @@ export function concatenateSlots(options: ConcatenateOptions): ConcatenationResu
   // ── Copia i segmenti con protezione anti-click ────────────────────────────
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i]
-    let { startSample, endSample, sourceData: src } = seg
+    const { startSample, sourceData: src } = seg
+    let { endSample } = seg
 
     // ── Zero-Crossing Snap (se abilitato) ──────────────────────────────────
     if (settings.antiClickMode === 'zero-crossing' || settings.antiClickMode === 'both') {
