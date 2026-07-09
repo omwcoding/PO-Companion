@@ -11,6 +11,14 @@
     </div>
 
     <div class="header-right">
+      <input
+        type="file"
+        ref="snapshotInputRef"
+        style="display: none"
+        accept=".json"
+        @change="onSnapshotImport"
+      />
+
       <button
         class="header-btn theme-toggle-btn"
         :class="{ 'is-active': isPhosphor }"
@@ -18,6 +26,23 @@
         :title="isPhosphor ? 'Disattiva tema CRT Phosphor' : 'Attiva tema CRT Phosphor'"
       >
         {{ isPhosphor ? '🟢 CRT' : '⚫ CRT' }}
+      </button>
+
+      <button
+        class="header-btn snapshot-btn"
+        @click="triggerSnapshotInput"
+        title="Importa la griglia ed i campioni da file JSON"
+      >
+        📂 Importa JSON
+      </button>
+
+      <button
+        class="header-btn snapshot-btn"
+        :disabled="!hasSource"
+        @click="$emit('export-snapshot')"
+        title="Salva l'intero progetto (inclusi i file audio) in un file JSON"
+      >
+        💾 Esporta JSON
       </button>
 
       <button
@@ -47,8 +72,10 @@ import { ref, computed, onMounted } from 'vue'
 import { useSampleStore } from '@/stores/useSampleStore'
 import { useWaveformState } from '@/composables/useWaveformState'
 import { useAudioEngine } from '@/composables/useAudioEngine'
+import { parseProjectSnapshot } from '@/services/projectSnapshot'
 
 const isPhosphor = ref(false)
+const snapshotInputRef = ref<HTMLInputElement | null>(null)
 
 function toggleTheme() {
   isPhosphor.value = !isPhosphor.value
@@ -59,6 +86,30 @@ function toggleTheme() {
     document.documentElement.classList.remove('theme-phosphor')
     localStorage.setItem('theme', 'default')
   }
+}
+
+function triggerSnapshotInput() {
+  snapshotInputRef.value?.click()
+}
+
+function onSnapshotImport(e: Event) {
+  const target = e.target as HTMLInputElement
+  const file = target.files?.[0]
+  if (!file) return
+
+  const reader = new FileReader()
+  reader.onload = (event) => {
+    try {
+      const text = event.target?.result as string
+      const snapshot = parseProjectSnapshot(text)
+      emit('import-snapshot', snapshot)
+    } catch (err) {
+      alert(`Errore caricamento snapshot JSON: ${err instanceof Error ? err.message : String(err)}`)
+    } finally {
+      target.value = ''
+    }
+  }
+  reader.readAsText(file)
 }
 
 onMounted(() => {
@@ -75,9 +126,11 @@ interface Props {
 
 defineProps<Props>()
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'generate'): void
   (e: 'export'): void
+  (e: 'export-snapshot'): void
+  (e: 'import-snapshot', snapshot: any): void
 }>()
 
 const store = useSampleStore()
@@ -214,16 +267,21 @@ const statusClass = computed(() => {
   color: rgba(255, 255, 255, 0.25);
 }
 
-.theme-toggle-btn {
+.theme-toggle-btn, .snapshot-btn {
   background: rgba(255, 255, 255, 0.05);
   border: 1.5px solid rgba(255, 255, 255, 0.15);
   color: rgba(255, 255, 255, 0.8);
 }
 
-.theme-toggle-btn:hover {
+.theme-toggle-btn:hover, .snapshot-btn:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.1);
   color: white;
   border-color: rgba(255, 255, 255, 0.25);
+}
+
+.snapshot-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
 }
 
 .theme-toggle-btn.is-active {

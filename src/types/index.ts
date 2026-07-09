@@ -24,6 +24,8 @@ export interface SampleSlot {
   attack: number
   /** Release (fade-out) in secondi (default: 0) */
   release: number
+  /** Pitch shift (repitch) in semitoni -12 a +12 (default: 0) */
+  pitch: number
 }
 
 /** Impostazioni di progetto */
@@ -159,5 +161,6 @@ export function createEmptySlot(id: number): SampleSlot {
     reversed: false,
     attack: 0,
     release: 0,
+    pitch: 0,
   }
 }

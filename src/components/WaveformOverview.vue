@@ -100,9 +100,9 @@ function draw() {
   }
 
   // ── Draw assigned pad regions ─────────────────────────────────────────────
-  const assigned = store.assignedSlots
+  const assigned = store.assignedSlots.filter(s => s.sourceBufferId === store.activeSourceId)
   for (const slot of assigned) {
-    if (!slot.isAssigned || slot.sourceBufferId === null) continue
+    if (!slot.isAssigned) continue
     const x1 = (slot.startMarker / duration) * canvas.width
     const x2 = (slot.endMarker / duration) * canvas.width
     const color = PAD_COLORS[(slot.id - 1) % PAD_COLORS.length]
@@ -242,8 +242,8 @@ onMounted(async () => {
 
 onUnmounted(() => ro.disconnect())
 
-// Ridisegna quando cambia viewStart/viewEnd o i peaks
-watch([viewStart, viewEnd, peaksData, () => store.assignedSlots], () => {
+// Ridisegna quando cambia viewStart/viewEnd, i peaks o la sorgente attiva
+watch([viewStart, viewEnd, peaksData, () => store.assignedSlots, () => store.activeSourceId], () => {
   draw()
 }, { deep: true })
 </script>

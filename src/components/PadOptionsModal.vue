@@ -117,6 +117,27 @@
               />
             </div>
 
+            <!-- Pitch Shift (Repitch) -->
+            <div class="control-group" v-if="slot.isAssigned">
+              <div class="label-row">
+                <label class="control-label">Pitch Shift (Speed)</label>
+                <span class="value-label">
+                  {{ slot.pitch > 0 ? '+' : '' }}{{ slot.pitch }} semitoni
+                  <span v-if="slot.pitch !== 0" style="opacity: 0.5; font-size: 9px; font-family: monospace;">
+                    ({{ slot.pitch > 0 ? 'velocizza' : 'rallenta' }})
+                  </span>
+                </span>
+              </div>
+              <input
+                type="range"
+                v-model.number="slot.pitch"
+                min="-12"
+                max="12"
+                step="1"
+                class="volume-slider"
+              />
+            </div>
+
             <!-- Opzioni Boolean (Reverse, etc) -->
             <div class="options-row">
               <label class="toggle-container">
@@ -200,6 +221,7 @@ async function onPreview() {
       currentSlot.reversed,
       currentSlot.attack || 0,
       currentSlot.release || 0,
+      currentSlot.pitch || 0,
       store.settings.po33Simulation
     )
   } catch (err) {

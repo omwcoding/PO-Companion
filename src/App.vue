@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useSampleStore } from '@/stores/useSampleStore'
 import { useWaveformState } from '@/composables/useWaveformState'
 import { useAudioEngine } from '@/composables/useAudioEngine'
@@ -22,6 +22,7 @@ import { concatenateSlots } from '@/services/pcmConcatenator'
 import { normalize } from '@/services/audioNormalizer'
 import { generateSyncInterleaved } from '@/services/syncGenerator'
 import { downloadWAV } from '@/services/wavEncoder'
+import { exportProjectSnapshot } from '@/services/projectSnapshot'
 import { formatDuration, formatDBFS } from '@/utils/formatters'
 import type { TransientPoint } from '@/types'
 
@@ -41,7 +42,7 @@ const generateError = ref('')
 const normResult = ref<{ peakBefore: number; peakAfter: number; gain: number } | null>(null)
 
 // ── Computeds ─────────────────────────────────────────────────────────────
-const activeSourceId = computed(() => [...store.sourceBuffers.keys()][0] || '')
+const activeSourceId = computed(() => store.activeSourceId)
 const activeMonoData = computed(() => store.sourceBuffers.get(activeSourceId.value) || null)
 const selectedSlot = computed(() => store.selectedSlot)
 
@@ -54,6 +55,24 @@ watch(() => waveform.hasSource.value, (hasSrc) => {
     normResult.value = null
   }
 })
+
+// Aggiorna lo stato della waveform quando cambia la sorgente attiva (caricamento o switch dropdown)
+watch(() => store.activeSourceId, (newId) => {
+  transients.value = []
+  showTransients.value = false
+
+  if (!newId) {
+    waveform.resetWaveform()
+    return
+  }
+
+  const meta = store.bufferMeta?.get(newId)
+  const cachedPeaks = store.sourcePeaks?.get(newId)
+  if (meta && cachedPeaks) {
+    waveform.setPeaks(cachedPeaks)
+    waveform.initView(meta.duration, 10)
+  }
+}, { immediate: true })
 
 // ── Event Handlers ────────────────────────────────────────────────────────
 function onPadLongPress(slotId: number) {
@@ -163,6 +182,30 @@ function exportWAV() {
   const name = originalName.replace(/\.[^.]+$/, '')
   downloadWAV(store.outputBuffer, `${name}-po33`, store.settings.syncEnabled ? 2 : 1)
 }
+
+function exportProject() {
+  exportProjectSnapshot(
+    store.slots,
+    store.settings,
+    store.activeSourceId,
+    store.sourceBuffers,
+    store.bufferMeta
+  )
+}
+
+async function importProject(snapshot: any) {
+  try {
+    const ctx = engine.getContext()
+    await store.importProjectSnapshot(snapshot, ctx)
+  } catch (err) {
+    alert(`Errore nell'importazione dello snapshot: ${err instanceof Error ? err.message : String(err)}`)
+  }
+}
+
+onMounted(async () => {
+  const ctx = engine.getContext()
+  await store.loadFromDB(ctx)
+})
 </script>
 
 <template>
@@ -172,6 +215,8 @@ function exportWAV() {
       :isGenerating="isGenerating"
       @generate="generateStream"
       @export="exportWAV"
+      @export-snapshot="exportProject"
+      @import-snapshot="importProject"
     />
 
     <!-- Main Workspace -->

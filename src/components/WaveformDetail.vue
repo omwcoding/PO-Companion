@@ -166,7 +166,7 @@ function draw() {
 
   // ── Pad regions ───────────────────────────────────────────────────────────
   for (const slot of store.assignedSlots) {
-    if (!slot.isAssigned) continue
+    if (!slot.isAssigned || slot.sourceBufferId !== store.activeSourceId) continue
     const x1 = timeToX(slot.startMarker, canvas.width)
     const x2 = timeToX(slot.endMarker, canvas.width)
     if (x2 < 0 || x1 > canvas.width) continue
@@ -193,7 +193,7 @@ function draw() {
 
   // ── Markers for selected slot ─────────────────────────────────────────────
   const sel = store.selectedSlot
-  if (sel && sel.isAssigned) {
+  if (sel && sel.isAssigned && sel.sourceBufferId === store.activeSourceId) {
     const color = PAD_COLORS[(sel.id - 1) % PAD_COLORS.length]
     const midY = canvas.height / 2
 
@@ -361,7 +361,7 @@ function hitTestMarkers(pixelX: number): DragTarget {
   const hitArea = MARKER_HIT_AREA_PX * dpr
 
   for (const slot of store.assignedSlots) {
-    if (!slot.isAssigned) continue
+    if (!slot.isAssigned || slot.sourceBufferId !== store.activeSourceId) continue
     const sx = timeToX(slot.startMarker, canvasRef.value!.width)
     const ex = timeToX(slot.endMarker, canvasRef.value!.width)
     if (Math.abs(pixelX - ex) < hitArea) return { slotId: slot.id, marker: 'end' }

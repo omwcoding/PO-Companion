@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { SampleSlot, ProjectSettings } from '@/types'
 import {
   createEmptySlot,
@@ -7,6 +7,14 @@ import {
   PO33_MEMORY_SECONDS,
   PO33_MAX_PADS,
 } from '@/types'
+import {
+  saveAudioFile,
+  deleteAudioFile,
+  saveProjectState,
+  loadProjectState,
+  loadAudioFiles,
+  clearDB,
+} from '@/services/db'
 
 export const useSampleStore = defineStore('sample', () => {
   // ── State ────────────────────────────────────────────────────────────────
@@ -25,6 +33,9 @@ export const useSampleStore = defineStore('sample', () => {
   /** Map<sourceBufferId, { fileName, duration, sampleRate }> metadati */
   const bufferMeta = ref<Map<string, { fileName: string; duration: number; sampleRate: number }>>(new Map())
 
+  /** Map<sourceBufferId, Float32Array> dei picchi calcolati per l'overview */
+  const sourcePeaks = ref<Map<string, Float32Array>>(new Map())
+
   /** Il flusso concatenato finale (output pronto per PO-33) */
   const outputBuffer = ref<Float32Array | null>(null)
 
@@ -33,6 +44,9 @@ export const useSampleStore = defineStore('sample', () => {
 
   /** Slot attualmente selezionato (1-16, 0 = nessuno) */
   const selectedSlotId = ref(0)
+
+  /** ID del file sorgente correntemente attivo per il chopping */
+  const activeSourceId = ref('')
 
   /** Impostazioni di progetto */
   const settings = ref<ProjectSettings>({ ...DEFAULT_SETTINGS })
@@ -50,17 +64,15 @@ export const useSampleStore = defineStore('sample', () => {
   /** Durata totale stimata del flusso (senza normalizzazione) */
   const estimatedDurationSeconds = computed(() => {
     const assigned = assignedSlots.value
-
     if (assigned.length === 0) return 0
-
-    const segmentsDuration = assigned.reduce(
-      (acc, s) => acc + (s.endMarker - s.startMarker),
-      0,
-    )
-    const gapDuration = ((assigned.length - 1) * settings.value.gapDurationMs) / 1000
-    const prefixDuration = settings.value.prefixSilenceMs / 1000
-
-    return segmentsDuration + gapDuration + prefixDuration
+    const totalSegmentDuration = assigned.reduce((acc, s) => {
+      const duration = s.endMarker - s.startMarker
+      const factor = s.pitch !== 0 ? Math.pow(2, s.pitch / 12) : 1.0
+      return acc + (duration / factor)
+    }, 0)
+    const totalGapDuration = (assigned.length - 1) * (settings.value.gapDurationMs / 1000)
+    const prefixSilence = settings.value.prefixSilenceMs / 1000
+    return prefixSilence + totalSegmentDuration + totalGapDuration
   })
 
   /** Percentuale del budget 40s usato (0.0 – 1.0, può superare 1.0) */
@@ -78,14 +90,33 @@ export const useSampleStore = defineStore('sample', () => {
     slots.value.find((s) => s.id === selectedSlotId.value) ?? null
   )
 
+  // Flag per evitare di auto-salvare su IndexedDB durante la fase di ripristino iniziale
+  const isRestoringFromDB = ref(false)
+
+  // Auto-salvataggi asincroni su variazione stato
+  watch(slots, (newSlots) => {
+    if (isRestoringFromDB.value) return
+    saveProjectState('slots', JSON.parse(JSON.stringify(newSlots)))
+  }, { deep: true })
+
+  watch(settings, (newSettings) => {
+    if (isRestoringFromDB.value) return
+    saveProjectState('settings', JSON.parse(JSON.stringify(newSettings)))
+  }, { deep: true })
+
+  watch(activeSourceId, (newId) => {
+    if (isRestoringFromDB.value) return
+    saveProjectState('activeSourceId', newId)
+  })
+
   // ── Actions ──────────────────────────────────────────────────────────────
 
-  /** Registra un nuovo buffer sorgente in memoria */
   function registerBuffer(
     id: string,
     pcmData: Float32Array,
     audioBuffer: AudioBuffer,
     fileName: string,
+    overviewPeaks: Float32Array,
   ): void {
     sourceBuffers.value.set(id, pcmData)
     audioBuffers.value.set(id, audioBuffer)
@@ -94,6 +125,17 @@ export const useSampleStore = defineStore('sample', () => {
       duration: audioBuffer.duration,
       sampleRate: audioBuffer.sampleRate,
     })
+    sourcePeaks.value.set(id, overviewPeaks)
+    activeSourceId.value = id
+
+    // Salva file audio in IndexedDB in background
+    saveAudioFile({
+      id,
+      fileName,
+      pcmData,
+      duration: audioBuffer.duration,
+      sampleRate: audioBuffer.sampleRate
+    }).catch(err => console.error('Errore di persistenza file audio in IndexedDB:', err))
   }
 
   /** Assegna un buffer sorgente a uno slot con i marker specificati */
@@ -137,6 +179,7 @@ export const useSampleStore = defineStore('sample', () => {
     slot.reversed = false
     slot.attack = 0
     slot.release = 0
+    slot.pitch = 0
     slot.name = `Pad ${slotId}`
   }
 
@@ -157,17 +200,158 @@ export const useSampleStore = defineStore('sample', () => {
     settings.value = { ...settings.value, ...patch }
   }
 
-  /** Resetta tutto lo stato */
+  /** Elimina un file sorgente e libera i pad associati */
+  function deleteSourceBuffer(id: string): void {
+    sourceBuffers.value.delete(id)
+    audioBuffers.value.delete(id)
+    bufferMeta.value.delete(id)
+    sourcePeaks.value.delete(id)
+
+    // Libera tutti gli slot assegnati a questo file
+    slots.value.forEach((s) => {
+      if (s.sourceBufferId === id) {
+        clearSlot(s.id)
+      }
+    })
+
+    // Aggiorna activeSourceId se rimosso
+    if (activeSourceId.value === id) {
+      activeSourceId.value = [...sourceBuffers.value.keys()][0] || ''
+    }
+
+    // Rimuove da IndexedDB
+    deleteAudioFile(id).catch(err => console.error('Errore di eliminazione file audio in IndexedDB:', err))
+  }
+
+  /** Resetta tutto lo stato e svuota IndexedDB */
   function resetAll(): void {
     slots.value = Array.from({ length: PO33_MAX_PADS }, (_, i) => createEmptySlot(i + 1))
     sourceBuffers.value = new Map()
     audioBuffers.value = new Map()
     bufferMeta.value = new Map()
+    sourcePeaks.value = new Map()
     outputBuffer.value = null
     outputDurationSeconds.value = 0
     selectedSlotId.value = 0
+    activeSourceId.value = ''
     concatenationLog.value = []
     settings.value = { ...DEFAULT_SETTINGS }
+
+    clearDB().catch(err => console.error('Errore di cancellazione IndexedDB:', err))
+  }
+
+  /** Carica lo stato dal DB IndexedDB */
+  async function loadFromDB(audioCtx: AudioContext): Promise<void> {
+    isRestoringFromDB.value = true
+    try {
+      const files = await loadAudioFiles()
+      for (const file of files) {
+        // Re-crea l'AudioBuffer
+        const buffer = audioCtx.createBuffer(1, file.pcmData.length, file.sampleRate)
+        buffer.copyToChannel(file.pcmData, 0)
+
+        // Ricalcola i picchi di overview
+        const { computeOverviewPeaks } = await import('@/utils/peakAnalyzer')
+        const overviewPeaks = computeOverviewPeaks(file.pcmData, 1000)
+
+        sourceBuffers.value.set(file.id, file.pcmData)
+        audioBuffers.value.set(file.id, buffer)
+        bufferMeta.value.set(file.id, {
+          fileName: file.fileName,
+          duration: file.duration,
+          sampleRate: file.sampleRate,
+        })
+        sourcePeaks.value.set(file.id, overviewPeaks)
+      }
+
+      // Ripristina slots, settings e activeSourceId
+      const savedSlots = await loadProjectState('slots')
+      if (savedSlots && savedSlots.length > 0) {
+        slots.value = savedSlots
+      }
+
+      const savedSettings = await loadProjectState('settings')
+      if (savedSettings) {
+        settings.value = { ...DEFAULT_SETTINGS, ...savedSettings }
+      }
+
+      const savedActiveId = await loadProjectState('activeSourceId')
+      if (savedActiveId && sourceBuffers.value.has(savedActiveId)) {
+        activeSourceId.value = savedActiveId
+      } else {
+        activeSourceId.value = [...sourceBuffers.value.keys()][0] || ''
+      }
+    } catch (err) {
+      console.error('Errore durante il caricamento da IndexedDB:', err)
+    } finally {
+      isRestoringFromDB.value = false
+    }
+  }
+
+  /** Importa uno snapshot di progetto decodificando e persistendo i dati */
+  async function importProjectSnapshot(snapshot: any, audioCtx: AudioContext): Promise<void> {
+    isRestoringFromDB.value = true
+    try {
+      // Svuota lo stato locale
+      slots.value = Array.from({ length: PO33_MAX_PADS }, (_, i) => createEmptySlot(i + 1))
+      sourceBuffers.value = new Map()
+      audioBuffers.value = new Map()
+      bufferMeta.value = new Map()
+      sourcePeaks.value = new Map()
+      outputBuffer.value = null
+      outputDurationSeconds.value = 0
+      selectedSlotId.value = 0
+      activeSourceId.value = ''
+      concatenationLog.value = []
+
+      // Pulisce IndexedDB prima dell'import
+      await clearDB()
+
+      const { base64ToFloat32Array } = await import('@/services/projectSnapshot')
+      const { computeOverviewPeaks } = await import('@/utils/peakAnalyzer')
+
+      // Ripristina e inserisce i file
+      for (const file of snapshot.audioFiles) {
+        const pcm = base64ToFloat32Array(file.pcmBase64)
+
+        // Crea l'AudioBuffer
+        const buffer = audioCtx.createBuffer(1, pcm.length, file.sampleRate)
+        buffer.copyToChannel(pcm, 0)
+
+        // Calcola overview peaks
+        const overviewPeaks = computeOverviewPeaks(pcm, 1000)
+
+        sourceBuffers.value.set(file.id, pcm)
+        audioBuffers.value.set(file.id, buffer)
+        bufferMeta.value.set(file.id, {
+          fileName: file.fileName,
+          duration: file.duration,
+          sampleRate: file.sampleRate,
+        })
+        sourcePeaks.value.set(file.id, overviewPeaks)
+
+        // Salva in IndexedDB
+        await saveAudioFile({
+          id: file.id,
+          fileName: file.fileName,
+          pcmData: pcm,
+          duration: file.duration,
+          sampleRate: file.sampleRate,
+        })
+      }
+
+      // Ripristina slots, settings e activeSourceId
+      slots.value = snapshot.slots
+      settings.value = snapshot.settings
+      activeSourceId.value = snapshot.activeSourceId
+
+      // Salva lo stato in IndexedDB
+      await saveProjectState('slots', JSON.parse(JSON.stringify(slots.value)))
+      await saveProjectState('settings', JSON.parse(JSON.stringify(settings.value)))
+      await saveProjectState('activeSourceId', activeSourceId.value)
+    } finally {
+      isRestoringFromDB.value = false
+    }
   }
 
   return {
@@ -176,9 +360,11 @@ export const useSampleStore = defineStore('sample', () => {
     sourceBuffers,
     audioBuffers,
     bufferMeta,
+    sourcePeaks,
     outputBuffer,
     outputDurationSeconds,
     selectedSlotId,
+    activeSourceId,
     settings,
     concatenationLog,
 
@@ -195,9 +381,12 @@ export const useSampleStore = defineStore('sample', () => {
     updateMarkers,
     renameSlot,
     clearSlot,
+    deleteSourceBuffer,
     setOutputBuffer,
     selectSlot,
     updateSettings,
     resetAll,
+    loadFromDB,
+    importProjectSnapshot,
   }
 })

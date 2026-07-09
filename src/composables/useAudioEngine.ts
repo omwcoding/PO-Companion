@@ -1,6 +1,7 @@
 import { ref, computed, readonly } from 'vue'
 import { PO33_SAMPLE_RATE } from '@/types'
 import { simulatePO33LoFi } from '@/services/po33Simulator'
+import { repitchPCM } from '@/services/pitchShifter'
 
 /**
  * Composable che gestisce l'AudioContext singleton e il playback audio.
@@ -185,6 +186,7 @@ export function useAudioEngine() {
     reversed: boolean = false,
     attack: number = 0,
     release: number = 0,
+    pitch: number = 0,
     simulatePO33: boolean = false
   ): Promise<void> {
     const ctx = ensureContext()
@@ -198,7 +200,6 @@ export function useAudioEngine() {
     const endSample = Math.round(endMarker * sampleRate)
     const length = Math.max(1, endSample - startSample)
 
-    const sliceBuffer = ctx.createBuffer(1, length, sampleRate)
     let channelData = new Float32Array(length)
 
     // Estrae i campioni del canale 0 per l'anteprima
@@ -230,11 +231,17 @@ export function useAudioEngine() {
       }
     }
 
+    // Applica pitch shifting (resampling)
+    if (pitch !== 0) {
+      channelData = repitchPCM(channelData, pitch)
+    }
+
     // Applica simulazione lo-fi PO-33
     if (simulatePO33) {
       channelData = simulatePO33LoFi(channelData)
     }
 
+    const sliceBuffer = ctx.createBuffer(1, channelData.length, sampleRate)
     sliceBuffer.copyToChannel(channelData, 0)
 
     return new Promise((resolve) => {

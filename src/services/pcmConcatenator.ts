@@ -4,6 +4,7 @@ import {
   findNearestZeroCrossing,
   applyMicroFadeOut,
 } from '@/utils/audioHelpers'
+import { repitchPCM } from '@/services/pitchShifter'
 
 export interface ConcatenateOptions {
   slots: SampleSlot[]
@@ -81,17 +82,21 @@ export function concatenateSlots(options: ConcatenateOptions): ConcatenationResu
       continue
     }
 
+    const origLength = endSample - startSample
+    const pitchFactor = slot.pitch !== 0 ? Math.pow(2, slot.pitch / 12) : 1.0
+    const resampledLength = Math.round(origLength / pitchFactor)
+
     segments.push({
       slot,
       sourceData: data,
       startSample,
       endSample,
-      length: endSample - startSample,
+      length: resampledLength,
     })
 
     log.push(
       `Pad ${slot.id} "${slot.name}": ${slot.startMarker.toFixed(3)}s → ${slot.endMarker.toFixed(3)}s ` +
-      `(${(endSample - startSample)} campioni = ${((endSample - startSample) / sr).toFixed(3)}s)`,
+      `(Pitch: ${slot.pitch > 0 ? '+' : ''}${slot.pitch} st, ${resampledLength} campioni = ${(resampledLength / sr).toFixed(3)}s)`,
     )
   }
 
@@ -138,7 +143,7 @@ export function concatenateSlots(options: ConcatenateOptions): ConcatenationResu
     if (segLength <= 0) continue
 
     // Estrai il segmento (copia in un buffer temporaneo per il fade)
-    const segment = src.slice(startSample, endSample)
+    let segment = src.slice(startSample, endSample)
 
     // Applica volume individuale del pad
     if (seg.slot.volume !== 1.0) {
@@ -173,13 +178,21 @@ export function concatenateSlots(options: ConcatenateOptions): ConcatenationResu
       applyMicroFadeOut(segment, segment.length, Math.min(fadeSamples, segment.length))
     }
 
-    // Copia il segmento nell'output
-    output.set(segment, offset)
-    offset += segLength
+    // Applica repitch se specificato
+    if (seg.slot.pitch !== 0) {
+      segment = repitchPCM(segment, seg.slot.pitch)
+    }
+
+    // Copia il segmento nell'output con clamp di sicurezza per la lunghezza
+    const copyLen = Math.min(segment.length, output.length - offset)
+    if (copyLen > 0) {
+      output.set(segment.subarray(0, copyLen), offset)
+      offset += copyLen
+    }
 
     // Salta il gap (già 0.0) — tranne dopo l'ultimo segmento
     if (i < segments.length - 1) {
-      offset += gapSamples
+      offset = Math.min(output.length, offset + gapSamples)
     }
   }
 

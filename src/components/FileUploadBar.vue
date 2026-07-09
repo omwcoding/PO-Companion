@@ -1,5 +1,14 @@
 <template>
   <div class="file-upload-container">
+    <!-- Input nascosto sempre montato nel DOM -->
+    <input
+      type="file"
+      ref="fileInputRef"
+      class="hidden-file-input"
+      accept="audio/*"
+      @change="onFileInput"
+    />
+
     <!-- Drop zone overlay when dragging over the whole app (optional, but good UX) -->
     <div
       v-if="isDragging"
@@ -19,7 +28,19 @@
       <div class="file-meta-info">
         <span class="file-icon">🎵</span>
         <div class="file-details">
-          <div class="file-name" :title="activeMeta?.fileName">{{ activeMeta?.fileName }}</div>
+          <select
+            class="source-select"
+            :value="store.activeSourceId"
+            @change="store.activeSourceId = ($event.target as HTMLSelectElement).value"
+          >
+            <option
+              v-for="[id, meta] in store.bufferMeta"
+              :key="id"
+              :value="id"
+            >
+              {{ meta.fileName }}
+            </option>
+          </select>
           <div class="file-specs">
             <span>{{ formatDuration(activeMeta?.duration ?? 0) }}</span>
             <span class="dot-separator">•</span>
@@ -32,11 +53,19 @@
       </div>
 
       <div class="action-buttons">
-        <button class="action-btn replace-btn" @click="triggerFileInput">
-          Cambia File
+        <button class="action-btn add-btn" @click="triggerFileInput" title="Carica un altro file audio in memoria">
+          ➕ Aggiungi File
         </button>
-        <button class="action-btn reset-btn" @click="resetCurrentFile" title="Rimuovi file e svuota tutto">
-          Svuota
+        <button
+          class="action-btn delete-btn-icon"
+          @click="deleteActiveFile"
+          title="Rimuovi questo file"
+          :disabled="store.bufferMeta.size <= 1"
+        >
+          🗑️
+        </button>
+        <button class="action-btn reset-btn" @click="resetCurrentFile" title="Rimuovi tutti i file e svuota tutto">
+          Svuota Tutto
         </button>
       </div>
     </div>
@@ -51,13 +80,6 @@
       @drop.prevent="onDrop"
       @click="triggerFileInput"
     >
-      <input
-        type="file"
-        ref="fileInputRef"
-        class="hidden-file-input"
-        accept="audio/*"
-        @change="onFileInput"
-      />
 
       <div v-if="isDecoding" class="decoding-state">
         <div class="spinner" />
@@ -145,24 +167,16 @@ async function handleFiles(files: FileList | null) {
     const ctx = engine.getContext()
     const result = await decodeAudioFile(file, ctx)
 
-    // Reset precedente stato waveform
-    waveform.resetWaveform()
-    store.resetAll()
-
     const id = uuidv4()
     // Mix to mono
     const pcmData = mixToMono(result.buffer)
 
-    // Registra buffer in store
-    store.registerBuffer(id, pcmData, result.buffer, result.fileName)
-    activeMetaStatus.value = { resampled: result.resampled }
-
     // Calcola overview peaks (1000 bin per l'intero file)
     const overviewPeaks = computeOverviewPeaks(pcmData, 1000)
-    waveform.setPeaks(overviewPeaks)
 
-    // Inizializza la finestra visuale del detail (mostra i primi 10 secondi, o meno se file più corto)
-    waveform.initView(result.durationSeconds, 10)
+    // Registra buffer in store (imposta anche activeSourceId e memorizza i picchi)
+    store.registerBuffer(id, pcmData, result.buffer, result.fileName, overviewPeaks)
+    activeMetaStatus.value = { resampled: result.resampled }
 
     // Seleziona il pad 1 per iniziare subito
     store.selectSlot(1)
@@ -179,9 +193,18 @@ async function handleFiles(files: FileList | null) {
 }
 
 function resetCurrentFile() {
-  if (confirm('Vuoi davvero rimuovere il file e svuotare tutti i pad assegnati?')) {
+  if (confirm('Vuoi davvero rimuovere TUTTI i file e svuotare tutti i pad assegnati?')) {
     waveform.resetWaveform()
     store.resetAll()
+  }
+}
+
+function deleteActiveFile() {
+  const id = store.activeSourceId
+  if (!id) return
+  const meta = store.bufferMeta.get(id)
+  if (meta && confirm(`Sei sicuro di voler rimuovere il file "${meta.fileName}"? Qualsiasi pad associato a questo file verrà liberato.`)) {
+    store.deleteSourceBuffer(id)
   }
 }
 
@@ -371,15 +394,52 @@ function formatDuration(seconds: number): string {
   transition: all 0.15s;
 }
 
-.replace-btn {
+.source-select {
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: white;
+  padding: 4px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+  cursor: pointer;
+  max-width: 240px;
+  text-overflow: ellipsis;
+  transition: border-color 0.15s;
+}
+
+.source-select:focus {
+  border-color: #FF6B2B;
+}
+
+.add-btn {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: rgba(255, 255, 255, 0.7);
 }
 
-.replace-btn:hover {
+.add-btn:hover {
   background: rgba(255, 255, 255, 0.1);
   color: white;
+}
+
+.delete-btn-icon {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.5);
+  padding: 6px 10px;
+}
+
+.delete-btn-icon:hover:not(:disabled) {
+  background: rgba(255, 82, 82, 0.1);
+  border-color: rgba(255, 82, 82, 0.4);
+  color: #FF5252;
+}
+
+.delete-btn-icon:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
 }
 
 .reset-btn {
