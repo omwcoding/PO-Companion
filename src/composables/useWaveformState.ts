@@ -56,7 +56,7 @@ export function useWaveformState() {
     const dur = sourceDuration.value
     if (dur === 0) return
     const minDuration = 0.1 // zoom massimo: 100ms visibili
-    let s = Math.max(0, start)
+    const s = Math.max(0, start)
     let e = Math.min(dur, end)
     if (e - s < minDuration) e = Math.min(dur, s + minDuration)
     viewStart.value = s
