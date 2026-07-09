@@ -259,8 +259,6 @@ async function handlePresetSelect(value: string) {
   }
 }
 
-debugger;
-
 async function handleQuickSave() {
   if (!store.activePresetId || !store.activePresetId.startsWith('user:')) {
     await handleSaveAs()
