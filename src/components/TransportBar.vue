@@ -157,7 +157,7 @@ function onProgressClick(e: MouseEvent) {
 }
 
 function formatTime(s: number): string {
-  if (!s || isNaN(s) || s < 0) return '0:00.0'
+  if (isNaN(s) || s <= 0) return '0:00.0'
   const m = Math.floor(s / 60)
   const sec = s % 60
   return `${m}:${sec.toFixed(1).padStart(4, '0')}`
