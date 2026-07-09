@@ -2,29 +2,41 @@ name: Global Linting Report
 
 on: [push]
 
+# Aggiungiamo esplicitamente il permesso di creare Issue
+permissions:
+  issues: write
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout del codice
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4 # Aggiornato a v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4 # Aggiornato a v4
         with:
-          node-version: '18' # o la versione che usi
+          node-version: '18'
 
       - name: Installa dipendenze
         run: npm install
 
       - name: Esegui ESLint e salva il report
-        # Esegue eslint, formatta l'output in testo semplice e continua anche se ci sono errori (|| true)
-        run: npx eslint . --format stylish > lint-report.txt || true 
+        run: npx eslint . --format stylish > lint-report.txt
+        # Permette alla pipeline di continuare anche se il linter trova errori
+        continue-on-error: true 
 
       - name: Crea un'Issue su GitHub con il report
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          echo "Contenuto del report:"
+          cat lint-report.txt
+          
           if [ -s lint-report.txt ]; then
             gh issue create --title "🚨 Report Errori Linter" --body-file lint-report.txt
+            echo "Issue creata con successo!"
+          else
+            echo "Nessun errore trovato o file vuoto. Nessuna issue creata."
           fi
