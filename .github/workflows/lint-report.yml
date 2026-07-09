@@ -1,0 +1,30 @@
+name: Global Linting Report
+
+on: [push]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del codice
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18' # o la versione che usi
+
+      - name: Installa dipendenze
+        run: npm install
+
+      - name: Esegui ESLint e salva il report
+        # Esegue eslint, formatta l'output in testo semplice e continua anche se ci sono errori (|| true)
+        run: npx eslint . --format stylish > lint-report.txt || true 
+
+      - name: Crea un'Issue su GitHub con il report
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -s lint-report.txt ]; then
+            gh issue create --title "🚨 Report Errori Linter" --body-file lint-report.txt
+          fi
