@@ -28,24 +28,39 @@ jobs:
       - name: Installa dipendenze
         run: npm ci # ⚡ OTTIMIZZAZIONE: Installazione pulita e riproducibile
 
-      - name: Verifica Compilazione (Build)
-        run: npm run build # 🚀 VERIFICA: Controlla che il progetto compili senza errori di tipo o bundler
-
-      - name: Esegui ESLint e salva il report
+      - name: Esegui Controllo Tipi (TypeScript)
+        # Esegue vue-tsc per scansionare TUTTO il progetto e salva i risultati
         run: |
-          # Esegue il linter e salva l'output pulito
-          npx eslint . --format stylish > raw-report.txt || true
+          npx vue-tsc -b --force > raw-ts-report.txt || true
+
+      - name: Esegui Linter (ESLint)
+        # Esegue ESLint e salva i risultati
+        run: |
+          npx eslint . --format stylish > raw-eslint-report.txt || true
+
+      - name: Genera Report Unificato
+        run: |
+          # Inizializza il file finale
+          echo "### ⚠️ Report di Stato del Progetto" > lint-report.txt
+          echo "Generato automaticamente ad ogni push per monitorare la salute del codice." >> lint-report.txt
+          echo "" >> lint-report.txt
           
-          # Se il report contiene errori, lo formattiamo in Markdown racchiudendolo in un blocco di codice
-          if [ -s raw-report.txt ]; then
-            echo "### ⚠️ Rilevati errori di Linting nel progetto" > lint-report.txt
-            echo "Si prega di risolvere i seguenti problemi riscontrati dal linter:" >> lint-report.txt
-            echo "" >> lint-report.txt
+          # Se ci sono errori di tipo
+          if [ -s raw-ts-report.txt ]; then
+            echo "#### 🟦 Errori di Tipo TypeScript (vue-tsc)" >> lint-report.txt
             echo '```text' >> lint-report.txt
-            cat raw-report.txt >> lint-report.txt
+            cat raw-ts-report.txt >> lint-report.txt
             echo '```' >> lint-report.txt
-          else
-            touch lint-report.txt
+            echo "" >> lint-report.txt
+          fi
+          
+          # Se ci sono errori di linter
+          if [ -s raw-eslint-report.txt ]; then
+            echo "#### 🟩 Errori di Stile & Linter (ESLint)" >> lint-report.txt
+            echo '```text' >> lint-report.txt
+            cat raw-eslint-report.txt >> lint-report.txt
+            echo '```' >> lint-report.txt
+            echo "" >> lint-report.txt
           fi
 
       - name: Gestisci l'Issue del Linter su GitHub
@@ -56,7 +71,8 @@ jobs:
         run: |
           ISSUE_NUMBER=$(gh issue list --search "Linter Report" --state open --json number --jq '.[0].number')
 
-          if [ -s raw-report.txt ]; then
+          # Se c'è almeno un errore in uno dei due report
+          if [ -s raw-ts-report.txt ] || [ -s raw-eslint-report.txt ]; then
             if [ -n "$ISSUE_NUMBER" ]; then
               gh issue edit "$ISSUE_NUMBER" --body-file lint-report.txt
               echo "Issue #$ISSUE_NUMBER aggiornata."
@@ -66,12 +82,16 @@ jobs:
             fi
           else
             if [ -n "$ISSUE_NUMBER" ]; then
-              gh issue close "$ISSUE_NUMBER" --comment "Ottimo lavoro! Tutti gli errori di linting sono stati risolti. 🎉"
+              gh issue close "$ISSUE_NUMBER" --comment "Ottimo lavoro! Tutti gli errori di compilazione e linting sono stati risolti. 🎉"
               echo "Issue #$ISSUE_NUMBER chiusa."
             else
-              echo "Nessun errore e nessuna issue da chiudere."
+              echo "Nessun errore trovato."
             fi
           fi
+
+      # 🚀 Esegui la build di produzione vera e propria (si assicura che il codice sia intatto per il deploy)
+      - name: Verifica Compilazione (Build)
+        run: npm run build
 
       # 📦 Carica i file compilati di Vite per il deploy (avviene solo su push su main)
       - name: Upload Pages artifact

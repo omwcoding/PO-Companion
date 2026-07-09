@@ -131,7 +131,7 @@ export function useAudioEngine() {
       if (simulatePO33) {
         channelData = simulatePO33LoFi(channelData)
       }
-      buffer.copyToChannel(channelData, 0)
+      buffer.copyToChannel(channelData as Float32Array<ArrayBuffer>, 0)
     } else {
       // De-interleva L (sync) e R (audio)
       const left = new Float32Array(frames)
@@ -146,8 +146,8 @@ export function useAudioEngine() {
         right = simulatePO33LoFi(right)
       }
 
-      buffer.copyToChannel(left, 0)
-      buffer.copyToChannel(right, 1)
+      buffer.copyToChannel(left as Float32Array<ArrayBuffer>, 0)
+      buffer.copyToChannel(right as Float32Array<ArrayBuffer>, 1)
     }
     return buffer
   }
@@ -242,7 +242,7 @@ export function useAudioEngine() {
     }
 
     const sliceBuffer = ctx.createBuffer(1, channelData.length, sampleRate)
-    sliceBuffer.copyToChannel(channelData, 0)
+    sliceBuffer.copyToChannel(channelData as Float32Array<ArrayBuffer>, 0)
 
     return new Promise((resolve) => {
       duration.value = sliceBuffer.duration
