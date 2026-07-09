@@ -5,6 +5,7 @@ import { useWaveformState } from '@/composables/useWaveformState'
 import { useAudioEngine } from '@/composables/useAudioEngine'
 
 // Components
+import PasswordGate from '@/components/PasswordGate.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import PresetsModal from '@/components/PresetsModal.vue'
 import FileUploadBar from '@/components/FileUploadBar.vue'
@@ -34,6 +35,7 @@ const waveform = useWaveformState()
 const engine = useAudioEngine()
 
 // ── State ─────────────────────────────────────────────────────────────────
+const isAuthorized = ref(false)
 const transients = ref<TransientPoint[]>([])
 const showTransients = ref(false)
 const showSettings = ref(false)
@@ -342,6 +344,13 @@ async function handleDeleteCurrent() {
 }
 
 onMounted(async () => {
+  // Controlla l'autorizzazione salvata in localStorage
+  const cachedHash = localStorage.getItem('po_companion_auth_hash')
+  const CORRECT_HASH = 'eb4ea9f4ce7e68df84f44c72b9649df8e6a2a7b0e738dd622211c3f907b40773'
+  if (cachedHash === CORRECT_HASH) {
+    isAuthorized.value = true
+  }
+
   const ctx = engine.getContext()
   await store.loadFromDB(ctx)
   await refreshPresetsList()
@@ -349,7 +358,8 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="app">
+  <PasswordGate v-if="!isAuthorized" @authorized="isAuthorized = true" />
+  <div v-else class="app">
     <!-- Header -->
     <AppHeader
       :isGenerating="isGenerating"
