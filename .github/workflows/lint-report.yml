@@ -1,14 +1,19 @@
-name: Global Linting Report
+name: CI/CD Pipeline
 
-on: [push]
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
-# Permessi necessari per permettere al bot di leggere il codice e gestire le Issue
 permissions:
   issues: write
   contents: read
+  pages: write      # Richiesto per il deploy su GitHub Pages
+  id-token: write   # Richiesto per l'autenticazione OIDC di GitHub Pages
 
 jobs:
-  lint:
+  ci:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout del codice
@@ -17,38 +22,72 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # Versione necessaria per evitare il crash di ESLint v9+
+          node-version: '20'
+          cache: 'npm' # ⚡ OTTIMIZZAZIONE: Attiva la cache di npm per velocizzare l'installazione
 
       - name: Installa dipendenze
-        run: npm install
+        run: npm ci # ⚡ OTTIMIZZAZIONE: Installazione pulita e riproducibile
+
+      - name: Verifica Compilazione (Build)
+        run: npm run build # 🚀 VERIFICA: Controlla che il progetto compili senza errori di tipo o bundler
 
       - name: Esegui ESLint e salva il report
-        run: npx eslint . --format stylish > lint-report.txt || true
+        run: |
+          # Esegue il linter e salva l'output pulito
+          npx eslint . --format stylish > raw-report.txt || true
+          
+          # Se il report contiene errori, lo formattiamo in Markdown racchiudendolo in un blocco di codice
+          if [ -s raw-report.txt ]; then
+            echo "### ⚠️ Rilevati errori di Linting nel progetto" > lint-report.txt
+            echo "Si prega di risolvere i seguenti problemi riscontrati dal linter:" >> lint-report.txt
+            echo "" >> lint-report.txt
+            echo '```text' >> lint-report.txt
+            cat raw-report.txt >> lint-report.txt
+            echo '```' >> lint-report.txt
+          else
+            touch lint-report.txt
+          fi
 
       - name: Gestisci l'Issue del Linter su GitHub
+        # Questo step gira solo sui push diretti su main (non sulle PR o altre branch)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # 1. Cerca se esiste già un'issue aperta creata in precedenza
           ISSUE_NUMBER=$(gh issue list --search "Linter Report" --state open --json number --jq '.[0].number')
 
-          # 2. Controlla se il file del report contiene testo (quindi ci sono errori)
-          if [ -s lint-report.txt ]; then
+          if [ -s raw-report.txt ]; then
             if [ -n "$ISSUE_NUMBER" ]; then
-              # Se l'issue esiste già, la aggiorna sovrascrivendo il testo
               gh issue edit "$ISSUE_NUMBER" --body-file lint-report.txt
-              echo "Issue #$ISSUE_NUMBER aggiornata con la nuova lista errori."
+              echo "Issue #$ISSUE_NUMBER aggiornata."
             else
-              # Se non esiste, ne crea una nuova
               gh issue create --title "Linter Report" --body-file lint-report.txt
               echo "Nuova issue creata."
             fi
           else
-            # 3. Se il report è vuoto (0 errori) e c'è un'issue aperta, la chiude
             if [ -n "$ISSUE_NUMBER" ]; then
               gh issue close "$ISSUE_NUMBER" --comment "Ottimo lavoro! Tutti gli errori di linting sono stati risolti. 🎉"
-              echo "Issue #$ISSUE_NUMBER chiusa con successo!"
+              echo "Issue #$ISSUE_NUMBER chiusa."
             else
-              echo "Nessun errore trovato e nessuna issue da chiudere. Ottimo lavoro!"
+              echo "Nessun errore e nessuna issue da chiudere."
             fi
           fi
+
+      # 📦 Carica i file compilati di Vite per il deploy (avviene solo su push su main)
+      - name: Upload Pages artifact
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist # La cartella con la build creata da npm run build
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: ci # Eseguiamo il deploy solo se il job di integrazione (ci) ha avuto successo
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
