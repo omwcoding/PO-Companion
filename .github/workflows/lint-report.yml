@@ -23,9 +23,7 @@ jobs:
         run: npm install
 
       - name: Esegui ESLint e salva il report
-        run: npx eslint . --format stylish > lint-report.txt
-        # Fondamentale: dice ad Actions di non fermarsi se ESLint trova errori
-        continue-on-error: true 
+        run: npx eslint . --format stylish > lint-report.txt || true
 
       - name: Gestisci l'Issue del Linter su GitHub
         env:
