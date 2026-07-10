@@ -8,6 +8,7 @@ import { useAudioEngine } from '@/composables/useAudioEngine'
 import PasswordGate from '@/components/PasswordGate.vue'
 import AppHeader from '@/components/AppHeader.vue'
 import PresetsModal from '@/components/PresetsModal.vue'
+import GuideModal from '@/components/GuideModal.vue'
 import FileUploadBar from '@/components/FileUploadBar.vue'
 import ModeSelector from '@/components/ModeSelector.vue'
 import ChopToolbar from '@/components/ChopToolbar.vue'
@@ -41,6 +42,7 @@ const showTransients = ref(false)
 const showSettings = ref(false)
 const showOptionsModal = ref(false)
 const showPresetsModal = ref(false)
+const showGuideModal = ref(false)
 const optionsSlotId = ref(0)
 
 const factoryPresets = ref<{ id: string; name: string; fileName: string; description: string }[]>([])
@@ -372,6 +374,7 @@ onMounted(async () => {
       @quick-save="handleQuickSave"
       @save-as="handleSaveAs"
       @delete-current="handleDeleteCurrent"
+      @open-guide="showGuideModal = true"
     />
 
     <!-- Main Workspace -->
@@ -618,6 +621,12 @@ onMounted(async () => {
       :isOpen="showPresetsModal"
       @close="showPresetsModal = false"
       @import-snapshot="importProject"
+    />
+
+    <!-- Quick Guide Modal -->
+    <GuideModal
+      :isOpen="showGuideModal"
+      @close="showGuideModal = false"
     />
   </div>
 </template>

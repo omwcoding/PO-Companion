@@ -78,6 +78,14 @@
 
     <div class="header-right">
       <button
+        class="header-btn guide-btn"
+        @click="$emit('open-guide')"
+        title="Scorciatoie & Guida Rapida PO-33"
+      >
+        📖 Guida
+      </button>
+
+      <button
         class="header-btn theme-toggle-btn"
         :class="{ 'is-active': isPhosphor }"
         @click="toggleTheme"
@@ -151,6 +159,7 @@ const emit = defineEmits<{
   (e: 'quick-save'): void
   (e: 'save-as'): void
   (e: 'delete-current'): void
+  (e: 'open-guide'): void
 }>()
 
 const store = useSampleStore()
