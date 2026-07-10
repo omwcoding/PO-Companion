@@ -55,8 +55,8 @@ L'utente carica un file audio, lo taglia visualmente in segmenti (max 16 pad), e
 | Memoria totale campioni | **~40 secondi** (pool unico condiviso da tutti gli slot) |
 | Slot Drum | 16 (griglia 4x4, bank A) |
 | Slot Melodic | 16 (griglia 4x4, con pitch tracking, bank B) |
-| Sample Rate **interno** del PO-33 | **~23.437 Hz** *(non 44.1kHz — vedi §2.6)* |
-| Bit Depth interno | **8-bit µ-law** *(companding — vedi §2.6)* |
+| Sample Rate **interno** del PO-33 | **~23.437 Hz** *(non 44.1kHz — vedi §2.7)* |
+| Bit Depth interno | **8-bit µ-law** *(companding — vedi §2.7)* |
 | Sample Rate **output** app → line-in | **44.1 kHz** (la ADC del PO-33 converte internamente) |
 | Canali | **Mono** (l'input stereo viene mixato internamente) |
 | Ingresso audio | Jack 3.5mm TRS (Line-In) |
@@ -175,9 +175,20 @@ Canale LEFT:  ┌─┐   ┌─┐   ┌─┐   ┌─┐    ← Click di sync
 Canale RIGHT: ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓  ← Flusso audio campioni
 ```
 
-Questo consente al PO-33 di:
-- Registrare solo dal canale destro (audio).
-- Sincronizzarsi con altri dispositivi tramite il canale sinistro (clock).
+#### Modi di Sync Hardware del PO-33
+Il PO-33 supporta 6 modalità di sincronizzazione (selezionabili tenendo premuto `record` e premendo `bpm`):
+
+| Modalità | Ingresso (Input) | Uscita (Output) | Descrizione |
+|---|---|---|---|
+| **SY0** | Stereo | Stereo | Nessuna sincronizzazione (Default) |
+| **SY1** | Stereo | Mono + Sync | Riceve audio stereo, invia clock a valle |
+| **SY2** | Sync | Stereo | Riceve clock (L) e audio (R), esce stereo |
+| **SY3** | Sync | Mono + Sync | Riceve clock (L) e audio (R), invia clock a valle |
+| **SY4** | Mono + Sync | Stereo | Riceve clock e audio mono miscelati, esce stereo |
+| **SY5** | Mono + Sync | Mono + Sync | Riceve clock e audio mono, invia clock a valle |
+
+> [!IMPORTANT]
+> Quando l'utente attiva lo split **Stereo Sync** su PO-Companion (inviando il clock di sync sul canale sinistro e l'audio sul canale destro), il PO-33 **deve essere configurato in modalità SY2, SY3, SY4 o SY5** (tipicamente **SY2** o **SY4**). Se lasciato in modalità predefinita **SY0**, il PO-33 registrerà anche il fastidioso segnale acustico di clock sul canale sinistro dei campioni.
 
 > [!NOTE]
 > L'implementazione prevista è un `OscillatorNode` (onda quadra) a BPM configurabile dall'utente. Il segnale sync verrà generato nel modulo `syncGenerator.ts`. Nella Fase 3 approfondiremo il formato esatto (frequenza, duty cycle, ampiezza) con test fisici sul dispositivo.
@@ -212,7 +223,17 @@ Esiste un metodo alternativo usato dalla community per ottenere **16 slice ugual
 > - Permette di **selezionare hit specifici** da punti diversi di una canzone lunga
 > - Non richiede passaggi manuali sul PO-33 oltre alla semplice registrazione
 
-### 2.6 Formato Audio Interno del PO-33
+### 2.6 Backup e Ripristino dei Dati (Full System Backup)
+
+Il PO-33 supporta la trasmissione e la ricezione dell'intera memoria di sistema (tutti i pattern, i campioni e le impostazioni) sotto forma di segnale acustico modem stereo, facilitando il salvataggio ed il ripristino di interi progetti.
+
+- **Invio Backup (Transmit)**: Premendo simultaneamente `write + sound + play`, il PO-33 avvia la riproduzione del dump dei dati codificato in frequenza sul Line-Out (è fondamentale registrare questo flusso in **stereo** — in mono le informazioni sul clock/dati andrebbero perse).
+- **Ricezione Backup (Receive)**: Tenendo premuto simultaneamente `write + sound + record`, il PO-33 entra in modalità ricezione dati e attende la riproduzione del file audio di backup dall'ingresso Line-In.
+
+> [!NOTE]
+> Questa funzionalità hardware è documentata solo per completezza di riferimento. Lo scopo principale di PO-Companion è la **preparazione ed il taglio visuale dei campioni**, non la codifica/decodifica del protocollo proprietario di backup (modem FSK) del PO-33.
+
+### 2.7 Formato Audio Interno del PO-33
 
 > [!IMPORTANT]
 > Questa è una delle scoperte più rilevanti della ricerca: il PO-33 **non registra a 44.1kHz 16-bit** come documenti TE potrebbero suggerire.
