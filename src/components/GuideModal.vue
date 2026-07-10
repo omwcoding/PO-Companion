@@ -10,10 +10,7 @@
 
         <!-- Body -->
         <div class="modal-body scrollable-body">
-          <div class="guide-intro">
-            Riferimento rapido per le combinazioni di tasti ed i segreti del Teenage Engineering PO-33 K.O!
-          </div>
-
+          
           <!-- Category 1: Recording -->
           <div class="guide-section">
             <h3 class="section-title">🎙️ Campionamento & Memoria</h3>

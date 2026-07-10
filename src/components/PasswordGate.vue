@@ -15,8 +15,7 @@
         <div class="terminal-body">
           <div class="prompt-text">
             <span class="accent-text">PO-COMPANION v0.1.0</span><br />
-            <span>INITIALIZING ENCRYPTED INTERFACE...</span><br />
-            <span class="warning-text">[SYSTEM ENCRYPTED: PRIVATE DEVELOPMENT BUILD]</span>
+            <span class="warning-text">[PRIVATE DEVELOPMENT BUILD]</span>
           </div>
 
           <form @submit.prevent="handleSubmit" class="input-area">
@@ -41,7 +40,7 @@
             </div>
             
             <button type="submit" class="terminal-btn" :disabled="loading">
-              {{ loading ? 'VERIFYING...' : 'DECRYPT SYSTEM' }}
+              {{ loading ? 'VERIFYING...' : 'ENTER' }}
             </button>
           </form>
         </div>
@@ -62,7 +61,7 @@ const error = ref(false)
 const loading = ref(false)
 const passwordInput = ref<HTMLInputElement | null>(null)
 
-// SHA-256 hash generated for the password "omie"
+// SHA-256 hash generated for the password
 const CORRECT_HASH = 'eb4ea9f4ce7e68df84f44c72b9649df8e6a2a7b0e738dd622211c3f907b40773'
 
 onMounted(() => {
