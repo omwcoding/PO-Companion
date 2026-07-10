@@ -1,0 +1,161 @@
+/* ─── Stili per la Griglia Pad (4x4) e Pad Cell ─────────── */
+
+.pad-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .pad-grid {
+    gap: 10px;
+  }
+}
+
+.pad-cell {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius-md);
+  border: 1.5px solid rgba(255, 255, 255, 0.08);
+  background: #141420;
+  cursor: pointer;
+  overflow: hidden;
+  touch-action: manipulation;
+  user-select: none;
+  transition: border-color 0.15s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.pad-cell:active {
+  transform: scale(0.93);
+}
+
+/* Stato Assegnato (Sample presente) */
+.pad-cell.is-assigned {
+  border-color: color-mix(in srgb, var(--pad-color) 60%, transparent);
+  background: color-mix(in srgb, var(--pad-color) 8%, #141420);
+}
+
+/* Stato Selezionato */
+.pad-cell.is-selected {
+  border-color: var(--pad-color);
+  border-width: 2px;
+  background: color-mix(in srgb, var(--pad-color) 15%, #141420);
+  box-shadow: 0 0 12px color-mix(in srgb, var(--pad-color) 35%, transparent);
+}
+
+/* Stato in Riproduzione (Anteprima) */
+.pad-cell.is-playing {
+  animation: pad-pulse 0.3s ease-out;
+}
+
+.pad-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center bottom,
+    color-mix(in srgb, var(--pad-color) 20%, transparent) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+.pad-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 6px;
+  gap: 2px;
+}
+
+.pad-number {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(255, 255, 255, 0.3);
+  line-height: 1;
+}
+
+.is-assigned .pad-number {
+  color: var(--pad-color);
+}
+
+.pad-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+}
+
+.pad-name {
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+}
+
+.pad-duration {
+  font-size: 9px;
+  font-family: 'JetBrains Mono', monospace;
+  color: rgba(255, 255, 255, 0.4);
+  line-height: 1;
+}
+
+.pad-indicators {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+  font-size: 8px;
+}
+
+.mini-waveform-canvas {
+  width: 100%;
+  height: 20px;
+  opacity: 0.65;
+  pointer-events: none;
+  margin-top: 4px;
+}
+
+.indicator {
+  font-size: 8px;
+  opacity: 0.7;
+}
+
+.pad-playing-ring {
+  position: absolute;
+  inset: -2px;
+  border-radius: 12px;
+  border: 2px solid var(--pad-color);
+  animation: ring-expand 0.4s ease-out forwards;
+  pointer-events: none;
+}
+
+.pad-press-effect {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: inherit;
+  pointer-events: none;
+  animation: press-fade 0.3s ease-out forwards;
+}
+
+@keyframes pad-pulse {
+  0% { transform: scale(0.92); }
+  50% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+@keyframes ring-expand {
+  from { opacity: 0.9; inset: -2px; }
+  to { opacity: 0; inset: -10px; }
+}
+
+@keyframes press-fade {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}

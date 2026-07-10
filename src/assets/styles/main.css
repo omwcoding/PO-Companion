@@ -1,4 +1,9 @@
 @import "tailwindcss";
+@import "./components/modals.css";
+@import "./components/header.css";
+@import "./components/waveform.css";
+@import "./components/grid.css";
+@import "./components/workspace.css";
 
 /* ─── Design Tokens ─────────────────────────────────────── */
 :root {
@@ -17,20 +22,6 @@
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
-}
-
-:root.theme-phosphor {
-  --color-bg:         #030903;
-  --color-surface:    #0B170B;
-  --color-surface-2:  #142B14;
-  --color-primary:    #39FF14;
-  --color-accent:     #00FF66;
-  --color-success:    #39FF14;
-  --color-danger:     #FF3333;
-  --color-waveform:   #39FF14;
-  --color-transient:  #00FF66;
-  --color-text:       #C8FFC8;
-  --color-muted:      #5E8A5E;
 }
 
 /* ─── Base Reset ─────────────────────────────────────────── */

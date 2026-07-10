@@ -1,0 +1,119 @@
+/* ─── Stili per i Visualizzatori Waveform ─────────────── */
+
+/* Overview Waveform (Barra Panoramica) */
+.waveform-overview {
+  position: relative;
+  width: 100%;
+  height: 48px;
+  background: #0D0D14;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: ew-resize;
+  flex-shrink: 0;
+}
+
+.overview-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.time-labels {
+  position: absolute;
+  bottom: 2px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 4px;
+  pointer-events: none;
+}
+
+.time-label {
+  font-size: 9px;
+  font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+  color: rgba(255, 255, 255, 0.35);
+  line-height: 1;
+}
+
+/* Detail Waveform (Area di Taglio Dettagliata) */
+.waveform-detail {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #0A0A12;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+}
+
+.detail-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+}
+
+.zoom-fit-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-sm);
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  padding: 0;
+}
+
+.zoom-fit-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.time-display {
+  position: absolute;
+  bottom: 6px;
+  left: 8px;
+  pointer-events: none;
+}
+
+.view-range {
+  font-size: 10px;
+  font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.transient-marker {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 171, 0, 0.6);
+  cursor: pointer;
+  transform: translateX(-50%);
+  transition: background 0.1s;
+}
+
+.transient-marker::before {
+  content: '▼';
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 8px;
+  color: #FFAB00;
+  line-height: 1;
+}
+
+.transient-marker:hover {
+  background: rgba(255, 171, 0, 1);
+  width: 2px;
+}

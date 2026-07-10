@@ -249,38 +249,4 @@ watch([viewStart, viewEnd, peaksData, () => store.assignedSlots, () => store.act
 </script>
 
 <style scoped>
-.waveform-overview {
-  position: relative;
-  width: 100%;
-  height: 48px;
-  background: #0D0D14;
-  border-radius: 6px;
-  overflow: hidden;
-  cursor: ew-resize;
-  flex-shrink: 0;
-}
-
-.overview-canvas {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.time-labels {
-  position: absolute;
-  bottom: 2px;
-  left: 0;
-  right: 0;
-  display: flex;
-  justify-content: space-between;
-  padding: 0 4px;
-  pointer-events: none;
-}
-
-.time-label {
-  font-size: 9px;
-  font-family: 'JetBrains Mono', 'Roboto Mono', monospace;
-  color: rgba(255, 255, 255, 0.35);
-  line-height: 1;
-}
 </style>

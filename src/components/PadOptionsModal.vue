@@ -252,41 +252,9 @@ function onNormalizePad() {
 </script>
 
 <style scoped>
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(10, 10, 15, 0.75);
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 16px;
-}
-
 .modal-container {
-  background: rgba(26, 26, 38, 0.85);
-  border: 1.5px solid rgba(255, 255, 255, 0.08);
-  border-top: 4px solid var(--pad-color);
-  border-radius: 16px;
-  width: 100%;
   max-width: 420px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6),
-              inset 0 1px 1px rgba(255, 255, 255, 0.1);
-  overflow: hidden;
-  backdrop-filter: blur(20px);
-}
-
-/* Header */
-.modal-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 18px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 4px solid var(--pad-color);
 }
 
 .pad-badge {
@@ -296,40 +264,6 @@ function onNormalizePad() {
   padding: 2px 8px;
   border-radius: 4px;
   text-transform: uppercase;
-}
-
-.modal-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.9);
-  flex-grow: 1;
-  margin: 0;
-}
-
-.close-btn {
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.4);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
-}
-
-.close-btn:hover {
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.8);
-}
-
-/* Body */
-.modal-body {
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
 }
 
 .control-group {
@@ -597,19 +531,4 @@ function onNormalizePad() {
   color: white;
 }
 
-/* Transitions */
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-.fade-enter-from, .fade-leave-to {
-  opacity: 0;
-}
-
-.scale-enter-active, .scale-leave-active {
-  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease;
-}
-.scale-enter-from, .scale-leave-to {
-  transform: scale(0.9);
-  opacity: 0;
-}
 </style>

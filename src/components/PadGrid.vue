@@ -77,16 +77,4 @@ async function previewPad(slot: typeof store.slots[0]) {
 </script>
 
 <style scoped>
-.pad-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  width: 100%;
-}
-
-@media (min-width: 640px) {
-  .pad-grid {
-    gap: 10px;
-  }
-}
 </style>
